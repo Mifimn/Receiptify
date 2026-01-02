@@ -6,8 +6,8 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
            <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-white rounded flex items-center justify-center text-brand-black font-bold text-xs">R</div>
-            <span className="font-bold text-lg">Receiptify</span>
+            <div className="w-6 h-6 bg-white rounded flex items-center justify-center text-brand-black font-bold text-xs">M</div>
+            <span className="font-bold text-lg">MifimnPay</span>
           </div>
           <p className="text-zinc-400 text-sm">Professional receipts for Nigerian businesses.</p>
         </div>

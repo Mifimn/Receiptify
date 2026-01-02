@@ -13,7 +13,7 @@ export default function Generator() {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  
+
   // --- AUTH & GUEST STATE ---
   const [isGuest, setIsGuest] = useState(true); 
 
@@ -83,7 +83,7 @@ export default function Generator() {
   };
 
   // --- RESTRICTION & CONFIRMATION FLOW ---
-  
+
   // 1. Triggered when user clicks Download/Share
   const initiateAction = (action: () => void) => {
     // If Guest, force login first
@@ -124,7 +124,7 @@ export default function Generator() {
         onclone: (clonedDoc) => {
             const element = clonedDoc.getElementById('receipt-node');
             const watermark = clonedDoc.getElementById('preview-watermark');
-            
+
             if (element) {
                 element.style.margin = '0';
                 element.style.transform = 'none';
@@ -211,14 +211,24 @@ export default function Generator() {
      return (sub + ship - disc).toLocaleString();
   }
 
-  const colors = ['#09090b', '#166534', '#1e40af', '#b45309', '#7e22ce', '#be123c', '#0891b2', '#854d0e'];
+  // Expanded Professional Color Palette (8 Colors)
+  const colors = [
+    '#09090b', // Jet Black
+    '#166534', // Deep Green
+    '#1e40af', // Rich Blue
+    '#b45309', // Burnt Orange
+    '#7e22ce', // Deep Purple
+    '#be123c', // Crimson Red
+    '#0891b2', // Cyan
+    '#854d0e', // Bronze
+  ];
 
   if (!isClient) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-zinc-400" /></div>;
 
   return (
     <div className="h-[100dvh] bg-zinc-100 flex flex-col font-sans overflow-hidden">
       <Head>
-        <title>Create Receipt | Receiptify</title>
+        <title>Create Receipt | MifimnPay</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
       </Head>
 
@@ -284,11 +294,11 @@ export default function Generator() {
 
       {/* --- MAIN CONTENT --- */}
       <div className="flex-1 relative overflow-hidden flex flex-col md:flex-row">
-        
+
         {/* LEFT: FORM */}
         <div className={`flex-1 h-full overflow-y-auto bg-zinc-50 p-4 md:p-6 space-y-6 ${activeTab === 'preview' ? 'hidden md:block' : 'block'}`}>
           <div className="space-y-6 pb-40 md:pb-10 max-w-2xl mx-auto">
-            {/* ... [FORM SECTIONS REMAIN SAME AS BEFORE] ... */}
+            {/* ... [FORM SECTIONS] ... */}
             <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
               <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2">
                   <Settings size={16} className="text-zinc-400" /> Customer & Details
@@ -371,10 +381,22 @@ export default function Generator() {
         {/* RIGHT: PREVIEW */}
         <div className={`flex-1 h-full bg-zinc-200/50 relative flex flex-col md:border-l border-zinc-200/50 ${activeTab === 'edit' ? 'hidden md:flex' : 'flex'}`}>
           <div className="bg-white/80 backdrop-blur-md border-b border-zinc-200 p-3 flex flex-col md:flex-row justify-between items-center gap-3 z-10 shadow-sm shrink-0">
-             <div className="flex items-center gap-3 bg-zinc-50 p-2 rounded-full border border-zinc-100 w-full md:w-auto">
-               <span className="text-xs font-bold text-zinc-400 uppercase pl-2">Color</span>
-               <div className="flex gap-1.5">{colors.slice(0, 5).map(c => (<button key={c} onClick={() => setSettings({...settings, color: c})} className={`w-7 h-7 rounded-full border-2 transition-all shadow-sm ${settings.color === c ? 'border-zinc-900 scale-110' : 'border-white'}`} style={{ backgroundColor: c }} />))}</div>
+
+             {/* UPDATED: COLOR PICKER - Shows all colors and scrolls on mobile */}
+             <div className="flex items-center gap-3 bg-zinc-50 p-2 rounded-full border border-zinc-100 w-full md:w-auto overflow-hidden">
+               <span className="text-xs font-bold text-zinc-400 uppercase pl-2 shrink-0">Color</span>
+               <div className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth w-full md:w-auto pr-2">
+                 {colors.map(c => (
+                   <button 
+                     key={c} 
+                     onClick={() => setSettings({...settings, color: c})}
+                     className={`w-7 h-7 rounded-full border-2 transition-all shadow-sm shrink-0 ${settings.color === c ? 'border-zinc-900 scale-110' : 'border-white'}`} 
+                     style={{ backgroundColor: c }} 
+                   />
+                 ))}
+               </div>
              </div>
+
              <div className="flex items-center gap-2 bg-zinc-50 p-1.5 rounded-full border border-zinc-100 w-full md:w-auto">
                <button onClick={() => setSettings({...settings, showLogo: !settings.showLogo})} className={`flex-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${settings.showLogo ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}>Logo</button>
                <button onClick={() => setSettings({...settings, template: settings.template === 'simple' ? 'detailed' : 'simple'})} className="flex-1 px-3 py-1.5 rounded-full text-xs font-bold bg-white shadow-sm border border-zinc-100 text-zinc-700">{settings.template === 'simple' ? 'Simple' : 'Detailed'}</button>
@@ -382,9 +404,8 @@ export default function Generator() {
           </div>
 
           <div className="flex-1 overflow-auto flex items-center justify-center pb-40 md:pb-10 p-4 bg-zinc-100/50 relative">
-             
+
              {/* ANTI-SCREENSHOT WATERMARK OVERLAY */}
-             {/* This overlay sits ON TOP of the receipt on screen, ruining any screenshot */}
              <div 
                id="preview-watermark"
                className="absolute inset-0 pointer-events-none z-50 flex flex-col items-center justify-center overflow-hidden"
