@@ -8,27 +8,24 @@ interface Props {
 
 export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
   const subtotal = data.items.reduce((acc, item) => acc + ((item.price || 0) * (item.qty || 0)), 0);
-  const total = subtotal + (data.shipping || 0) - (data.discount || 0);
-  const logoLetter = data.businessName.charAt(0) || 'R';
+  const total = subtotal + (Number(data.shipping) || 0) - (Number(data.discount) || 0);
+  const logoLetter = (data.businessName?.charAt(0) || 'R').toUpperCase();
 
   const zigzagImage = `data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2010%27%20width%3D%2720%27%20height%3D%2710%27%3E%3Cpolygon%20points%3D%270%2C0%2010%2C10%2020%2C0%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E`;
 
   return (
     <div className="flex justify-center items-start font-sans antialiased p-4">
-
       <div 
         ref={receiptRef}
         id="receipt-node"
         className="relative text-zinc-900 leading-tight drop-shadow-xl"
-        style={{ 
-          width: '320px', 
-          backgroundColor: 'transparent'
-        }}
+        style={{ width: '320px', backgroundColor: 'transparent' }}
       >
         <div className="h-2 w-full relative z-20 rounded-t-sm" style={{ backgroundColor: settings.color }}></div>
 
         <div className="bg-white w-full px-5 pt-5 pb-2 relative z-10">
-            {settings.showLogo && (
+            {/* Background Watermark Letter */}
+            {settings.showLogo && !data.logoUrl && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0 opacity-[0.03] pointer-events-none">
                 <span className="text-[140px] font-black -rotate-12" style={{ color: settings.color }}>
                    {logoLetter}
@@ -39,10 +36,14 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             <div className="text-center mb-6 relative z-10 border-b border-dashed border-zinc-200 pb-4">
                 {settings.showLogo && (
                     <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-white font-bold text-lg shadow-sm"
+                        className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-white font-bold text-lg shadow-sm overflow-hidden"
                         style={{ backgroundColor: settings.color }}
                     >
-                    {logoLetter}
+                      {data.logoUrl ? (
+                         <img src={data.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                         logoLetter
+                      )}
                     </div>
                 )}
                 <h2 className="font-extrabold text-base uppercase tracking-tight mb-1">{data.businessName || 'Business Name'}</h2>
@@ -50,7 +51,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-5 relative z-10">
-                <div className="flex flex-col">
+                <div className="flex flex-col text-left">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 block">Billed To</span>
                     <span className="text-xs font-bold break-words block leading-snug">{data.customerName || 'Guest'}</span>
                 </div>
@@ -61,7 +62,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
                 </div>
             </div>
 
-            <div className="mb-5 relative z-10">
+            <div className="mb-5 relative z-10 text-left">
                 <div className="grid grid-cols-[1fr_auto] gap-2 mb-2 pb-1 border-b border-zinc-100">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Item</span>
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider text-right">Amount</span>
@@ -91,18 +92,18 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             </div>
 
             <div className="pt-2 border-t-2 border-dashed border-zinc-100 relative z-10">
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-4 text-left">
                     <div className="flex justify-between text-[10px] font-medium text-zinc-500">
                         <span>Subtotal</span>
                         <span>{data.currency}{subtotal.toLocaleString()}</span>
                     </div>
-                    {data.shipping > 0 && (
+                    {(Number(data.shipping) > 0) && (
                         <div className="flex justify-between text-[10px] font-medium text-zinc-500">
                         <span>Shipping</span>
                         <span>{data.currency}{Number(data.shipping).toLocaleString()}</span>
                     </div>
                     )}
-                    {data.discount > 0 && (
+                    {(Number(data.discount) > 0) && (
                         <div className="flex justify-between text-[10px] font-bold text-green-600">
                         <span>Discount</span>
                         <span>-{data.currency}{Number(data.discount).toLocaleString()}</span>
@@ -128,15 +129,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             </div>
         </div>
 
-        <div 
-           className="w-full h-3 relative z-20"
-           style={{
-             backgroundImage: `url("${zigzagImage}")`,
-             backgroundSize: '12px 6px',
-             backgroundRepeat: 'repeat-x',
-             height: '6px'
-           }}
-        />
+        <div className="w-full h-3 relative z-20" style={{ backgroundImage: `url("${zigzagImage}")`, backgroundSize: '12px 6px', backgroundRepeat: 'repeat-x', height: '6px' }} />
       </div>
     </div>
   );
