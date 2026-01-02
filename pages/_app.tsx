@@ -21,7 +21,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta property="og:type" content="website" />
         <meta property="og:title" content="MifimnPay - Create Receipts Instantly" />
         <meta property="og:description" content="The fastest way to generate professional payment receipts for your business." />
-        <meta property="og:image" content={`${siteUrl}/og-image.png`} />
+        <meta property="og:image" content={`${siteUrl}/og-image.jpg`} />
         <meta property="og:url" content={siteUrl} />
         <meta property="og:site_name" content="MifimnPay" />
 
