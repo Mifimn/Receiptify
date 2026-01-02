@@ -1,16 +1,41 @@
-html,
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* YOUR NEW COLOR PALETTE */
+  --primary: #09090B;      /* Jet Black */
+  --secondary: #71717A;    /* Medium Gray */
+  --background: #FAFAFA;   /* Off White */
+  --paper: #FFFFFF;        /* Pure White */
+  --accent: #E4E4E7;       /* Subtle Silver */
+  
+  /* Helper for overlays (just black) */
+  --overlay: 9 9 11;       
+}
+
 body {
-  padding: 0;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  color: var(--primary);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Custom Selection Color (matches brand) */
+::selection {
+  background-color: var(--primary);
+  color: var(--paper);
 }
 
-* {
-  box-sizing: border-box;
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
