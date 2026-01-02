@@ -44,12 +44,14 @@ export default function Login() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
+        // CHECK IF PROFILE IS COMPLETE
         const { data: profile } = await supabase
           .from('profiles')
           .select('business_name')
           .eq('id', data.user.id)
           .single();
 
+        // Redirect based on whether they have changed the default name
         if (!profile?.business_name || profile.business_name === 'My Business') {
           router.push('/onboarding');
         } else {
@@ -78,7 +80,6 @@ export default function Login() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-8">
           <div className="text-center md:text-left">
             <h1 className="text-2xl font-bold text-zinc-950">{authMode === 'signin' ? 'Welcome back' : 'Create an account'}</h1>
-            <p className="text-zinc-500 mt-2">{authMode === 'signin' ? 'Enter your details to access your dashboard.' : 'Start generating professional receipts today.'}</p>
           </div>
 
           {error && (
@@ -92,23 +93,16 @@ export default function Login() {
           </button>
 
           <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-950">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vendor@example.com" required className="w-full h-11 px-4 bg-white border border-zinc-200 rounded-xl outline-none focus:border-zinc-950 transition-all" />
-            </div>
-            <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-950">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="w-full h-11 px-4 bg-white border border-zinc-200 rounded-xl outline-none focus:border-zinc-950 transition-all" />
-            </div>
-            <button disabled={isLoading} className="w-full h-12 bg-zinc-950 text-white rounded-xl font-medium hover:bg-zinc-800 transition-all flex items-center justify-center gap-2">
-              {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <>{authMode === 'signin' ? 'Sign In' : 'Create Account'} <ArrowRight size={16}/></>}
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="w-full h-11 px-4 bg-white border border-zinc-200 rounded-xl outline-none" />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full h-11 px-4 bg-white border border-zinc-200 rounded-xl outline-none" />
+            <button disabled={isLoading} className="w-full h-12 bg-zinc-950 text-white rounded-xl font-medium">
+              {isLoading ? <Loader2 className="animate-spin" /> : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
           <div className="text-center text-sm text-zinc-500">
-            {authMode === 'signin' ? "Don't have an account? " : "Already have an account? "}
             <button onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="text-zinc-950 font-bold hover:underline">
-              {authMode === 'signin' ? 'Sign up' : 'Sign in'}
+              {authMode === 'signin' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>
           </div>
         </motion.div>
