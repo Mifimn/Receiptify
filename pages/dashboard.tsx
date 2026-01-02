@@ -7,8 +7,6 @@ import {
   Users, 
   TrendingUp, 
   FileText, 
-  ArrowUpRight, 
-  Search,
   Loader2
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -22,13 +20,11 @@ export default function Dashboard() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // If auth is finished and no user exists, send to login
     if (!loading && !user) {
       router.push('/login');
       return;
     }
 
-    // If user exists, check if they finished onboarding
     if (user) {
       const checkProfile = async () => {
         try {
@@ -40,7 +36,7 @@ export default function Dashboard() {
           
           if (error) throw error;
 
-          // If the name is still the default from the SQL trigger, force onboarding
+          // If the business name is the default from the SQL trigger, force onboarding
           if (!data?.business_name || data.business_name === 'My Business') {
             router.push('/onboarding');
           } else {
@@ -56,7 +52,6 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  // Show a clean loading state while checking authentication and profile status
   if (loading || isChecking) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -74,76 +69,42 @@ export default function Dashboard() {
       <DashboardNavbar />
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        
-        {/* 1. Welcome Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-bold text-brand-black">Welcome back, {businessName} 👋</h1>
-          <p className="text-brand-gray text-sm">Here is what is happening with your business today.</p>
+          <p className="text-brand-gray text-sm">Here is your business overview.</p>
         </motion.div>
 
-        {/* 2. Overview Stats (Placeholders for now) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatsCard 
-            title="Total Sales" 
-            value="₦0.00" 
-            icon={<TrendingUp size={20} />} 
-            trend="0% change"
-          />
-          <StatsCard 
-            title="Receipts Generated" 
-            value="0" 
-            icon={<FileText size={20} />} 
-            trend="+0 today"
-          />
-           <StatsCard 
-            title="Active Customers" 
-            value="0" 
-            icon={<Users size={20} />} 
-            trend="0 new"
-          />
+          <StatsCard title="Total Sales" value="₦0.00" icon={<TrendingUp size={20} />} trend="0% change" />
+          <StatsCard title="Receipts Generated" value="0" icon={<FileText size={20} />} trend="+0 today" />
+          <StatsCard title="Active Customers" value="0" icon={<Users size={20} />} trend="0 new" />
         </div>
 
-        {/* 3. Empty State / Quick Actions */}
         <div className="bg-white rounded-2xl border border-zinc-200 p-12 text-center shadow-sm">
-            <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="text-zinc-300" size={32} />
-            </div>
+            <FileText className="mx-auto text-zinc-300 mb-4" size={48} />
             <h3 className="text-lg font-bold text-brand-black">No receipts found</h3>
-            <p className="text-brand-gray mb-8 max-w-sm mx-auto">
-                Your recent transactions will appear here once you start generating receipts.
-            </p>
+            <p className="text-brand-gray mb-8 max-w-sm mx-auto">Your recent transactions will appear here once you start generating receipts.</p>
             <button 
                 onClick={() => router.push('/generate')}
-                className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 rounded-xl font-bold inline-flex items-center gap-2 transition-all shadow-lg shadow-zinc-900/20"
+                className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 rounded-xl font-bold inline-flex items-center gap-2 transition-all shadow-lg"
             >
                 <Plus size={20} /> Create Your First Receipt
             </button>
         </div>
-
       </main>
     </div>
   );
 }
 
-// Helper Component for Stats Cards
 function StatsCard({ title, value, icon, trend }: { title: string, value: string, icon: any, trend: string }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
       <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-zinc-50 rounded-xl text-zinc-900 border border-zinc-100">
-          {icon}
-        </div>
-        <span className="text-xs font-medium bg-zinc-50 text-zinc-600 px-2 py-1 rounded-full border border-zinc-100">
-          {trend}
-        </span>
+        <div className="p-3 bg-zinc-50 rounded-xl text-zinc-900 border border-zinc-100">{icon}</div>
+        <span className="text-xs font-medium bg-zinc-50 text-zinc-600 px-2 py-1 rounded-full border border-zinc-100">{trend}</span>
       </div>
-      <div>
-        <p className="text-sm text-brand-gray mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-brand-black">{value}</h3>
-      </div>
+      <p className="text-sm text-brand-gray mb-1">{title}</p>
+      <h3 className="text-2xl font-bold text-brand-black">{value}</h3>
     </div>
   );
 }

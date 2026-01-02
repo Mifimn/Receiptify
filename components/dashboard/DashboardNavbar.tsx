@@ -1,132 +1,56 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Bell, User, LayoutGrid, History, Settings, LogOut } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, User, LogOut, ChevronDown } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../lib/AuthContext';
 
 export default function DashboardNavbar() {
+  const { user } = useAuth();
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<{ business_name: string; logo_url: string | null } | null>(null);
 
-  const isActive = (path: string) => router.pathname === path;
+  useEffect(() => {
+    if (user) {
+      const getProfile = async () => {
+        const { data } = await supabase.from('profiles').select('business_name, logo_url').eq('id', user.id).single();
+        if (data) setProfile(data);
+      };
+      getProfile();
+    }
+  }, [user]);
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
   };
 
   return (
-    <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-zinc-200 px-4 md:px-6 py-3">
-      <div className="max-w-6xl mx-auto flex justify-between items-center">
+    <nav className="bg-white border-b border-zinc-200 sticky top-0 z-50 h-16 flex items-center">
+      <div className="max-w-6xl mx-auto px-6 w-full flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-zinc-950">
+          <div className="w-8 h-8 bg-zinc-950 rounded-lg flex items-center justify-center text-white text-xs">M</div>
+          MifimnPay
+        </Link>
 
-        {/* LEFT: Brand */}
-        <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white font-bold">
-              M
-            </div>
-            <span className="font-bold text-zinc-900 text-lg hidden md:block">MifimnPay</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1 bg-zinc-100 p-1 rounded-lg">
-            <Link 
-              href="/dashboard" 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                isActive('/dashboard') 
-                  ? 'bg-white text-zinc-900 shadow-sm' 
-                  : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'
-              }`}
-            >
-              <LayoutGrid size={16} /> Overview
-            </Link>
-
-            <Link 
-              href="/history" 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                isActive('/history') 
-                  ? 'bg-white text-zinc-900 shadow-sm' 
-                  : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'
-              }`}
-            >
-              <History size={16} /> History
-            </Link>
-
-             <Link 
-              href="/settings" 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                isActive('/settings') 
-                  ? 'bg-white text-zinc-900 shadow-sm' 
-                  : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'
-              }`}
-            >
-              <Settings size={16} /> Settings
-            </Link>
-          </div>
-        </div>
-
-        {/* RIGHT: User Actions */}
-        <div className="flex items-center gap-3 md:gap-4">
-          <button className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-full transition-all relative">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-
-          <div className="h-6 w-[1px] bg-zinc-200 hidden md:block"></div>
-
-          <div className="relative">
-            <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center gap-3 pl-2 md:pl-0 focus:outline-none"
-            >
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-zinc-900">Mama Tunde</p>
-                <p className="text-[10px] text-zinc-500">Free Plan</p>
+        <div className="flex items-center gap-4">
+          <button className="p-2 text-zinc-500 hover:bg-zinc-100 rounded-full transition-all"><Bell size={20} /></button>
+          <div className="relative group">
+            <button className="flex items-center gap-2 p-1 hover:bg-zinc-100 rounded-xl transition-all border border-transparent hover:border-zinc-200">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-zinc-950">{profile?.business_name || 'Vendor'}</p>
+                <p className="text-[10px] text-zinc-500 text-left">Free Plan</p>
               </div>
-              <div className={`w-9 h-9 bg-zinc-100 rounded-full flex items-center justify-center border transition-all ${isMenuOpen ? 'border-zinc-900 text-zinc-900' : 'border-zinc-200 text-zinc-400'}`}>
-                <User size={18} />
-              </div>
-            </button>
-
-            <AnimatePresence>
-              {isMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-xl border border-zinc-200 z-50 overflow-hidden"
-                  >
-                     <div className="md:hidden px-4 py-3 border-b border-zinc-100 bg-zinc-50">
-                        <p className="text-sm font-bold text-zinc-900">Mama Tunde</p>
-                        <p className="text-xs text-zinc-500">Free Plan</p>
-                     </div>
-
-                     <div className="md:hidden border-b border-zinc-100 p-2">
-                        <Link href="/dashboard" onClick={() => setIsMenuOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${isActive('/dashboard') ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-                           <LayoutGrid size={16} /> Overview
-                        </Link>
-                        <Link href="/history" onClick={() => setIsMenuOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${isActive('/history') ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-                           <History size={16} /> History
-                        </Link>
-                        <Link href="/settings" onClick={() => setIsMenuOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${isActive('/settings') ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50'}`}>
-                           <Settings size={16} /> Settings
-                        </Link>
-                     </div>
-
-                     <div className="p-2">
-                        <button 
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                           <LogOut size={16} /> Log Out
-                        </button>
-                     </div>
-                  </motion.div>
-                </>
+              {profile?.logo_url ? (
+                <img src={profile.logo_url} alt="Logo" className="w-8 h-8 rounded-lg object-cover border" />
+              ) : (
+                <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center text-white"><User size={16} /></div>
               )}
-            </AnimatePresence>
+              <ChevronDown size={14} className="text-zinc-400" />
+            </button>
+            <div className="absolute right-0 mt-2 w-48 bg-white border rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all py-2 z-50">
+              <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"><LogOut size={16} /> Logout</button>
+            </div>
           </div>
         </div>
       </div>
