@@ -13,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <title>MifimnPay | Professional Receipt Generator</title>
         <meta name="description" content="Generate authentic OPay-style receipts instantly with MifimnPay. Download PDF or share via WhatsApp." />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-
+        
         {/* 2. Favicon */}
         <link rel="icon" href="/favicon.png" />
 
@@ -31,7 +31,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="twitter:description" content="Generate authentic OPay-style receipts instantly for your business." />
         <meta name="twitter:image" content={`${siteUrl}/og-image.png`} />
       </Head>
-
+      
       <Component {...pageProps} />
     </>
   );
