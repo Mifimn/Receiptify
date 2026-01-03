@@ -14,6 +14,7 @@ import html2canvas from 'html2canvas';
 export default function History() {
   const { user } = useAuth();
   const [receipts, setReceipts] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -23,8 +24,16 @@ export default function History() {
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user) fetchReceipts();
+    if (user) {
+        fetchReceipts();
+        fetchProfile();
+    }
   }, [user]);
+
+  const fetchProfile = async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', user?.id).single();
+    if (data) setProfile(data);
+  };
 
   const fetchReceipts = async () => {
     setLoading(true);
@@ -36,8 +45,15 @@ export default function History() {
   const handleDownloadAgain = async () => {
     if (!downloadRef.current) return;
     setIsDownloading(true);
+    // Short delay to ensure SVG and fonts are ready
+    await new Promise(r => setTimeout(r, 100));
     try {
-      const canvas = await html2canvas(downloadRef.current, { scale: 3, useCORS: true });
+      const canvas = await html2canvas(downloadRef.current, { 
+        scale: 3, 
+        useCORS: true,
+        backgroundColor: null,
+        logging: false
+      });
       const link = document.createElement('a');
       link.href = canvas.toDataURL("image/png", 1.0);
       link.download = `receipt-${selectedReceipt.receipt_number}.png`;
@@ -60,7 +76,6 @@ export default function History() {
           <Link href="/generate" className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"><Plus size={18} /> New Receipt</Link>
         </div>
 
-        {/* Filters */}
         <div className="bg-white p-4 rounded-xl border border-zinc-200 mb-6 flex flex-col md:flex-row gap-4">
           <input type="text" placeholder="Search customer or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-96 px-4 py-2 bg-zinc-50 border rounded-lg text-sm outline-none focus:border-zinc-900" />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-zinc-50 border text-sm rounded-lg p-2 outline-none w-full md:w-40 cursor-pointer">
@@ -68,7 +83,6 @@ export default function History() {
           </select>
         </div>
 
-        {/* Table */}
         <div className="bg-white border rounded-xl overflow-hidden shadow-sm overflow-x-auto">
           <table className="w-full text-left min-w-[700px]">
             <thead className="bg-zinc-50 border-b text-xs uppercase text-zinc-500 font-bold">
@@ -80,7 +94,7 @@ export default function History() {
               ) : filteredReceipts.map((r) => (
                 <tr key={r.id} className="hover:bg-zinc-50/50 group transition-colors">
                   <td className="px-6 py-4 font-mono text-xs font-bold text-zinc-500">{r.receipt_number}</td>
-                  <td className="px-6 py-4 text-sm text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-zinc-500">{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
                   <td className="px-6 py-4 font-bold text-zinc-900">{r.customer_name}</td>
                   <td className="px-6 py-4 text-sm font-bold text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</td>
                   <td className="px-6 py-4 text-right">
@@ -96,7 +110,6 @@ export default function History() {
         </div>
       </main>
 
-      {/* VIEW MODAL - Solves shipping/discount breakdown error */}
       {selectedReceipt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
@@ -111,12 +124,15 @@ export default function History() {
                                 ...selectedReceipt,
                                 customerName: selectedReceipt.customer_name,
                                 receiptNumber: selectedReceipt.receipt_number,
-                                currency: '₦',
+                                businessName: profile?.business_name || 'Business Name',
+                                businessPhone: profile?.business_phone || '',
+                                logoUrl: profile?.logo_url,
+                                currency: profile?.currency || '₦',
                                 shipping: Number(selectedReceipt.shipping_fee || 0),
                                 discount: Number(selectedReceipt.discount_amount || 0),
                                 items: selectedReceipt.items || []
                             }} 
-                            settings={{ color: '#09090b', showLogo: true, template: 'detailed' }} 
+                            settings={{ color: profile?.theme_color || '#09090b', showLogo: true, template: 'detailed' }} 
                             receiptRef={downloadRef} 
                         />
                     </div>
@@ -133,3 +149,4 @@ export default function History() {
     </div>
   );
 }
+
