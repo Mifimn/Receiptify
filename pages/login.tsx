@@ -14,93 +14,46 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `https://mifimnpay.vercel.app/dashboard` },
-    });
-    if (error) setError(error.message);
-  };
-
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
     try {
       if (authMode === 'signup') {
         const { error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
-        alert('Check your email for the confirmation link!');
+        alert('Verification email sent!');
         setAuthMode('signin');
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
-
-        // Force check for profile to handle onboarding redirect
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('business_name')
-          .eq('id', data.user.id)
-          .single();
-
-        if (!profile?.business_name || profile.business_name === 'My Business') {
-          router.push('/onboarding');
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/dashboard'); 
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err: any) { setError(err.message); } 
+    finally { setIsLoading(false); }
   };
 
   return (
     <div className="min-h-screen bg-white">
-      <Head><title>{authMode === 'signin' ? 'Login' : 'Sign Up'} | MifimnPay</title></Head>
+      <Head><title>MifimnPay | Login</title></Head>
       <Navbar />
 
       <main className="flex items-center justify-center pt-40 pb-20 px-6">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="w-full max-w-lg space-y-12"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg space-y-12">
           <div className="text-center">
-            <img src="/favicon.png" alt="MifimnPay" className="w-20 h-20 mx-auto mb-8 rounded-3xl shadow-2xl shadow-zinc-200" />
+            <img src="/favicon.png" alt="M" className="w-20 h-20 mx-auto mb-8 rounded-3xl shadow-2xl shadow-zinc-200" />
             <h1 className="text-5xl font-black text-zinc-950 tracking-tight leading-tight">
               {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
             </h1>
             <p className="text-zinc-500 mt-4 text-xl tracking-tight">The fastest way to bill your customers professionally.</p>
           </div>
 
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm">
-              <AlertCircle size={18} /> <p>{error}</p>
-            </div>
-          )}
-
-          <button 
-            onClick={handleGoogleLogin} 
-            className="w-full h-18 flex items-center justify-center gap-4 bg-white text-zinc-950 border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm font-bold text-lg"
-          >
-             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-6 h-6" alt="Google" />
-             Continue with Google
-          </button>
-
-          <div className="relative flex items-center justify-center">
-            <div className="border-t w-full border-zinc-100"></div>
-            <span className="bg-white px-6 text-xs text-zinc-400 font-bold uppercase tracking-[0.2em] absolute">or email</span>
-          </div>
-
           <form onSubmit={handleEmailAuth} className="space-y-6">
             <div className="space-y-4">
+              {/* SPACIOUS INPUT FIELDS */}
               <input 
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
-                placeholder="Email address" required 
+                placeholder="Email Address" required 
                 className="w-full h-18 px-8 border-2 border-zinc-100 rounded-2xl outline-none focus:border-zinc-950 focus:ring-8 focus:ring-zinc-900/5 transition-all text-lg font-medium" 
               />
               <input 
@@ -122,7 +75,7 @@ export default function Login() {
             onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} 
             className="w-full text-center text-base font-bold text-zinc-400 hover:text-zinc-950 transition-colors"
           >
-            {authMode === 'signin' ? "New to MifimnPay? Create an account" : "Already have an account? Sign in"}
+            {authMode === 'signin' ? "New here? Create an account" : "Already have an account? Sign in"}
           </button>
         </motion.div>
       </main>
