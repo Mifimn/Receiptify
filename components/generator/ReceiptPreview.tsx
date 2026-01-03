@@ -55,35 +55,35 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
                 <div className="text-right flex flex-col items-end">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 block">Receipt No.</span>
                     <span className="text-xs font-black block leading-none">{data.receiptNumber}</span>
+                    {/* Fixed Date Display */}
                     <span className="text-[9px] text-zinc-400 font-bold block mt-1.5">{data.date}</span>
                 </div>
             </div>
 
             <div className="mb-6 relative z-10 text-left">
-                <div className="grid grid-cols-[1fr_auto] gap-2 mb-2 pb-1 border-b border-zinc-100">
+                <div className="flex justify-between mb-2 pb-1 border-b border-zinc-100">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Item Description</span>
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest text-right">Amount</span>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Amount</span>
                 </div>
 
-                {/* Fixed Overlapping: Added more space-y and controlled leading */}
-                <div className="space-y-5 pt-1"> 
+                <div className="flex flex-col space-y-4 pt-1"> 
                     {data.items.length === 0 ? (
                         <p className="text-[10px] text-center text-zinc-300 py-2 italic font-medium">No items listed</p>
                     ) : (
                         data.items.map((item) => (
-                        <div key={item.id} className="grid grid-cols-[1fr_auto] gap-3 items-start min-h-[32px]">
-                            <div className="flex flex-col min-w-0 pr-2">
-                                <span className="text-[11px] font-black text-zinc-800 break-words leading-relaxed mb-1">
+                        <div key={item.id} className="flex justify-between items-start border-b border-zinc-50/50 pb-2">
+                            <div className="flex flex-col max-w-[70%]">
+                                <span className="text-[11px] font-black text-zinc-800 break-words leading-tight">
                                     {item.name || 'Item Name'}
                                 </span>
                                 {settings.template === 'detailed' && (
-                                    <span className="text-[9px] text-zinc-400 font-bold tracking-tight">
+                                    <span className="text-[9px] text-zinc-400 font-bold mt-1">
                                         {item.qty} x {data.currency}{Number(item.price || 0).toLocaleString()}
                                     </span>
                                 )}
                             </div>
-                            <div className="text-right self-start pt-0.5">
-                                <span className="text-[11px] font-black text-zinc-900 whitespace-nowrap">
+                            <div className="text-right ml-2 flex-shrink-0">
+                                <span className="text-[11px] font-black text-zinc-900">
                                     {data.currency}{((Number(item.qty) || 0) * (Number(item.price) || 0)).toLocaleString()}
                                 </span>
                             </div>
