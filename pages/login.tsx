@@ -27,33 +27,34 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
     try {
       if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
         alert('Check your email for the confirmation link!');
         setAuthMode('signin');
       } else {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError) throw authError;
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
 
+        // Force check for profile to handle onboarding redirect
         const { data: profile } = await supabase
           .from('profiles')
           .select('business_name')
           .eq('id', data.user.id)
           .single();
 
-        // Redirect based on profile completion status
         if (!profile?.business_name || profile.business_name === 'My Business') {
           router.push('/onboarding');
         } else {
           router.push('/dashboard');
         }
       }
-    } catch (err: any) { 
-        setError(err.message); 
-    } finally { 
-        setIsLoading(false); 
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,14 +63,18 @@ export default function Login() {
       <Head><title>{authMode === 'signin' ? 'Login' : 'Sign Up'} | MifimnPay</title></Head>
       <Navbar />
 
-      <main className="flex items-center justify-center pt-36 pb-20 px-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-10">
+      <main className="flex items-center justify-center pt-40 pb-20 px-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="w-full max-w-lg space-y-12"
+        >
           <div className="text-center">
-            <img src="/favicon.png" alt="MifimnPay Logo" className="w-20 h-20 mx-auto mb-6 rounded-2xl shadow-xl shadow-zinc-100" />
-            <h1 className="text-4xl font-black text-zinc-950 tracking-tight">
-              {authMode === 'signin' ? 'Welcome Back' : 'Join MifimnPay'}
+            <img src="/favicon.png" alt="MifimnPay" className="w-20 h-20 mx-auto mb-8 rounded-3xl shadow-2xl shadow-zinc-200" />
+            <h1 className="text-5xl font-black text-zinc-950 tracking-tight leading-tight">
+              {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
             </h1>
-            <p className="text-zinc-500 mt-3 text-lg">Instant professional receipts for your brand.</p>
+            <p className="text-zinc-500 mt-4 text-xl tracking-tight">The fastest way to bill your customers professionally.</p>
           </div>
 
           {error && (
@@ -80,7 +85,7 @@ export default function Login() {
 
           <button 
             onClick={handleGoogleLogin} 
-            className="w-full h-16 flex items-center justify-center gap-4 bg-white text-zinc-950 border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm font-bold text-base"
+            className="w-full h-18 flex items-center justify-center gap-4 bg-white text-zinc-950 border-2 border-zinc-100 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm font-bold text-lg"
           >
              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-6 h-6" alt="Google" />
              Continue with Google
@@ -88,27 +93,36 @@ export default function Login() {
 
           <div className="relative flex items-center justify-center">
             <div className="border-t w-full border-zinc-100"></div>
-            <span className="bg-white px-4 text-xs text-zinc-400 font-bold uppercase tracking-widest absolute">or secure email</span>
+            <span className="bg-white px-6 text-xs text-zinc-400 font-bold uppercase tracking-[0.2em] absolute">or email</span>
           </div>
 
-          <form onSubmit={handleEmailAuth} className="space-y-5">
-            <input 
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
-              placeholder="Email address" required 
-              className="w-full h-16 px-6 border-2 border-zinc-100 rounded-2xl outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-900/5 transition-all text-lg" 
-            />
-            <input 
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
-              placeholder="Password" required 
-              className="w-full h-16 px-6 border-2 border-zinc-100 rounded-2xl outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-900/5 transition-all text-lg" 
-            />
-            <button disabled={isLoading} className="w-full h-16 bg-zinc-950 text-white rounded-2xl font-bold transition-all active:scale-95 shadow-2xl shadow-zinc-200 text-lg flex items-center justify-center">
+          <form onSubmit={handleEmailAuth} className="space-y-6">
+            <div className="space-y-4">
+              <input 
+                type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
+                placeholder="Email address" required 
+                className="w-full h-18 px-8 border-2 border-zinc-100 rounded-2xl outline-none focus:border-zinc-950 focus:ring-8 focus:ring-zinc-900/5 transition-all text-lg font-medium" 
+              />
+              <input 
+                type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
+                placeholder="Password" required 
+                className="w-full h-18 px-8 border-2 border-zinc-100 rounded-2xl outline-none focus:border-zinc-950 focus:ring-8 focus:ring-zinc-900/5 transition-all text-lg font-medium" 
+              />
+            </div>
+            
+            <button 
+              disabled={isLoading} 
+              className="w-full h-18 bg-zinc-950 text-white rounded-2xl font-black text-xl transition-all active:scale-[0.98] shadow-2xl shadow-zinc-300 flex items-center justify-center"
+            >
               {isLoading ? <Loader2 className="animate-spin" /> : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
-          <button onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-center text-sm font-bold text-zinc-950 transition-colors hover:text-zinc-600 underline decoration-transparent">
-            {authMode === 'signin' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+          <button 
+            onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} 
+            className="w-full text-center text-base font-bold text-zinc-400 hover:text-zinc-950 transition-colors"
+          >
+            {authMode === 'signin' ? "New to MifimnPay? Create an account" : "Already have an account? Sign in"}
           </button>
         </motion.div>
       </main>
