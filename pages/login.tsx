@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { ArrowRight, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import Navbar from '../components/landing/Navbar';
 
 export default function Login() {
   const router = useRouter();
@@ -27,7 +27,6 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
     try {
       if (authMode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password });
@@ -37,42 +36,23 @@ export default function Login() {
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('business_name')
-          .eq('id', data.user.id)
-          .single();
-
-        // Redirect based on whether they have finished setup
-        if (!profile?.business_name || profile.business_name === 'My Business') {
-          router.push('/onboarding');
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err: any) { setError(err.message); } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="min-h-screen grid md:grid-cols-2 bg-zinc-50">
+    <div className="min-h-screen bg-white">
       <Head><title>{authMode === 'signin' ? 'Login' : 'Sign Up'} | MifimnPay</title></Head>
-      <div className="hidden md:flex flex-col justify-between bg-zinc-950 p-12 text-white relative overflow-hidden">
-        <div className="z-10">
-          <div className="w-10 h-10 bg-white text-zinc-950 rounded-xl flex items-center justify-center font-bold mb-6">M</div>
-          <h2 className="text-4xl font-bold max-w-md leading-tight text-white decoration-transparent">Professional Receipts, Generated Instantly.</h2>
-        </div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-zinc-800/30 rounded-full blur-3xl" />
-      </div>
+      
+      {/* Integrated Landing Navbar */}
+      <Navbar />
 
-      <div className="flex items-center justify-center p-6 md:p-12">
+      <main className="flex items-center justify-center pt-32 px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-8">
-          <div className="text-center md:text-left">
-            <h1 className="text-2xl font-bold text-zinc-950">{authMode === 'signin' ? 'Welcome back' : 'Create an account'}</h1>
+          <div className="text-center">
+            <h1 className="text-3xl font-black text-zinc-950">{authMode === 'signin' ? 'Welcome Back' : 'Join MifimnPay'}</h1>
+            <p className="text-zinc-500 mt-2">Manage your receipts effortlessly</p>
           </div>
 
           {error && (
@@ -81,23 +61,32 @@ export default function Login() {
             </div>
           )}
 
-          <button onClick={handleGoogleLogin} className="w-full h-12 flex items-center justify-center gap-3 bg-white text-zinc-950 border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all font-medium">
+          <button 
+            onClick={handleGoogleLogin} 
+            className="w-full h-14 flex items-center justify-center gap-3 bg-white text-zinc-950 border border-zinc-200 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm font-bold text-sm"
+          >
+             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
              Continue with Google
           </button>
 
+          <div className="relative flex items-center justify-center">
+            <div className="border-t w-full border-zinc-100"></div>
+            <span className="bg-white px-4 text-xs text-zinc-400 font-bold uppercase tracking-widest absolute">or email</span>
+          </div>
+
           <form onSubmit={handleEmailAuth} className="space-y-4">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className="w-full h-11 px-4 border border-zinc-200 rounded-xl outline-none" />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full h-11 px-4 border border-zinc-200 rounded-xl outline-none" />
-            <button disabled={isLoading} className="w-full h-12 bg-zinc-950 text-white rounded-xl font-medium">
-              {isLoading ? <Loader2 className="animate-spin" /> : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" required className="w-full h-13 px-4 border border-zinc-200 rounded-xl outline-none focus:border-zinc-900 transition-colors" />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className="w-full h-13 px-4 border border-zinc-200 rounded-xl outline-none focus:border-zinc-900 transition-colors" />
+            <button disabled={isLoading} className="w-full h-14 bg-zinc-950 text-white rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-zinc-200">
+              {isLoading ? <Loader2 className="animate-spin mx-auto" /> : (authMode === 'signin' ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
-          <button onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-center text-sm font-bold text-zinc-950 underline decoration-transparent">
+          <button onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-center text-sm font-bold text-zinc-950 transition-colors hover:text-zinc-600">
             {authMode === 'signin' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 }

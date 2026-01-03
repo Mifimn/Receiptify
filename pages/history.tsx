@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
+import Link from 'next/head';
 import { 
-  Search, Filter, Download, Trash2, Plus, 
+  Search, Filter, Download, Plus, 
   Calendar, CheckCircle2, Clock, Loader2, Eye, X 
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/AuthContext';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import ReceiptPreview from '../components/generator/ReceiptPreview';
-// Changed to toPng from html-to-image
 import { toPng } from 'html-to-image';
 
 export default function History() {
@@ -38,20 +37,12 @@ export default function History() {
     if (!downloadRef.current) return;
     setIsDownloading(true);
     try {
-      // Switched to toPng with pixelRatio for better UI clarity
-      const dataUrl = await toPng(downloadRef.current, { 
-        pixelRatio: 3, 
-        cacheBust: true 
-      });
+      const dataUrl = await toPng(downloadRef.current, { pixelRatio: 3, cacheBust: true });
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = `receipt-${selectedReceipt.receipt_number}.png`;
       link.click();
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setIsDownloading(false); 
-    }
+    } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
   const filteredReceipts = receipts.filter(r => 
@@ -60,13 +51,13 @@ export default function History() {
   ).filter(r => statusFilter === 'All' || r.status === statusFilter);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 font-sans">
       <Head><title>History | MifimnPay</title></Head>
       <DashboardNavbar />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Receipt History</h1>
-          <Link href="/generate" className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"><Plus size={18} /> New Receipt</Link>
+          <Link href="/generate" className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all"><Plus size={18} /> New Receipt</Link>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-zinc-200 mb-6 flex flex-col md:flex-row gap-4">
@@ -91,10 +82,7 @@ export default function History() {
                   <td className="px-6 py-4 font-bold text-zinc-900">{r.customer_name}</td>
                   <td className="px-6 py-4 text-sm font-bold text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       <button onClick={() => setSelectedReceipt(r)} className="p-2 text-zinc-400 hover:text-zinc-900 transition-all"><Eye size={16}/></button>
-                       <button onClick={() => {/* Delete Logic */}} className="p-2 text-zinc-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
-                    </div>
+                    <button onClick={() => setSelectedReceipt(r)} className="p-2 text-zinc-400 hover:text-zinc-900 transition-all"><Eye size={16}/></button>
                   </td>
                 </tr>
               ))}
@@ -137,5 +125,15 @@ export default function History() {
         </div>
       )}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles = { Paid: "bg-green-100 text-green-700 border-green-200", Pending: "bg-yellow-100 text-yellow-700 border-yellow-200" };
+  const icons = { Paid: <CheckCircle2 size={12} />, Pending: <Clock size={12} /> };
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${styles[status as keyof typeof styles] || styles.Paid}`}>
+      {icons[status as keyof typeof icons] || icons.Paid} {status}
+    </span>
   );
 }

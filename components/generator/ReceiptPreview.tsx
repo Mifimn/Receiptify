@@ -1,4 +1,5 @@
 import { ReceiptData, ReceiptSettings } from '../../types';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Props {
   data: ReceiptData;
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
+  const { user } = useAuth();
   const subtotal = data.items.reduce((acc, item) => acc + ((item.price || 0) * (item.qty || 0)), 0);
   const total = subtotal + (Number(data.shipping) || 0) - (Number(data.discount) || 0);
   const logoLetter = (data.businessName?.charAt(0) || 'R').toUpperCase();
@@ -14,18 +16,23 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
   const zigzagImage = `data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2010%27%20width%3D%2720%27%20height%3D%2710%27%3E%3Cpolygon%20points%3D%270%2C0%2010%2C10%2020%2C0%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E`;
 
   return (
-    <div className="flex justify-center items-start font-sans antialiased p-4">
+    <div className="flex justify-center items-start font-sans antialiased p-4 relative">
+      {/* Background Watermark for Guest Users */}
+      {!user && (
+        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden opacity-[0.05] rotate-[-25deg]">
+          <span className="text-5xl font-black text-black whitespace-nowrap">PREVIEW ONLY • SIGN UP TO DOWNLOAD</span>
+        </div>
+      )}
+
       <div 
         ref={receiptRef}
         id="receipt-node"
         className="relative text-zinc-900 leading-tight drop-shadow-xl"
-        // Note: html-to-image prefers a defined background color (white) rather than transparent to ensure quality exports
         style={{ width: '320px', backgroundColor: '#ffffff' }}
       >
         <div className="h-2 w-full relative z-20 rounded-t-sm" style={{ backgroundColor: settings.color }}></div>
 
         <div className="bg-white w-full px-5 pt-5 pb-2 relative z-10">
-            {/* Background Watermark Letter */}
             {settings.showLogo && !data.logoUrl && (
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden z-0 opacity-[0.03] pointer-events-none">
                 <span className="text-[140px] font-black -rotate-12" style={{ color: settings.color }}>
@@ -130,7 +137,16 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             </div>
         </div>
 
-        <div className="w-full h-3 relative z-20" style={{ backgroundImage: `url("${zigzagImage}")`, backgroundSize: '12px 6px', backgroundRepeat: 'repeat-x', height: '6px' }} />
+        {/* Zigzag bottom boundary */}
+        <div 
+           className="w-full h-3 relative z-20" 
+           style={{ 
+             backgroundImage: `url("${zigzagImage}")`, 
+             backgroundSize: '12px 6px', 
+             backgroundRepeat: 'repeat-x', 
+             height: '6px' 
+           }} 
+        />
       </div>
     </div>
   );

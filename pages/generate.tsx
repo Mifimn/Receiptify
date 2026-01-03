@@ -5,7 +5,6 @@ import {
   Download, Share2, Plus, Trash2, ArrowLeft, Loader2, 
   Palette, Settings, Lock, AlertTriangle 
 } from 'lucide-react';
-// Changed import to html-to-image
 import { toPng } from 'html-to-image';
 import { ReceiptData, ReceiptItem, ReceiptSettings } from '../types';
 import ReceiptPreview from '../components/generator/ReceiptPreview';
@@ -48,15 +47,11 @@ export default function Generator() {
   useEffect(() => {
     setIsClient(true);
     const initializeData = async () => {
-      const today = new Date().toLocaleDateString('en-GB', { 
-        day: '2-digit', month: '2-digit', year: 'numeric' 
-      });
-
+      const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
       if (user) {
         try {
           const { data: nextNum } = await supabase.rpc('get_next_receipt_number', { target_user_id: user.id });
           const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-
           setData(prev => ({
             ...prev,
             receiptNumber: nextNum || '001',
@@ -135,21 +130,10 @@ export default function Generator() {
     if (!receiptRef.current) return null;
     setIsGenerating(true);
     setActiveTab('preview');
-    // Short delay to ensure browser completes layout/rendering
     await new Promise(r => setTimeout(r, 400)); 
     try {
-      // Changed to toPng with pixelRatio for higher resolution
-      return await toPng(receiptRef.current, { 
-        pixelRatio: 3, 
-        cacheBust: true,
-        // Using toPng excludes watermark via style hidden rather than clone document manipulation
-      });
-    } catch (err) { 
-      console.error(err);
-      return null; 
-    } finally { 
-      setIsGenerating(false); 
-    }
+      return await toPng(receiptRef.current, { pixelRatio: 3, cacheBust: true });
+    } catch (err) { return null; } finally { setIsGenerating(false); }
   };
 
   const handleDownload = async () => {
@@ -169,9 +153,7 @@ export default function Generator() {
     try {
       const image = await generateImage();
       if (!image) return;
-
       await saveToHistory();
-
       const res = await fetch(image);
       const blob = await res.blob();
       const file = new File([blob], `receipt-${data.receiptNumber}.png`, { type: 'image/png' });
@@ -180,7 +162,7 @@ export default function Generator() {
         await navigator.share({
           files: [file],
           title: `Receipt #${data.receiptNumber}`,
-          text: `Hello ${data.customerName || 'Customer'}, attached is your receipt #${data.receiptNumber}.`,
+          text: `Hello ${data.customerName || 'Customer'}, attached is your receipt.`,
         });
         router.push('/history');
       } else {
@@ -188,14 +170,13 @@ export default function Generator() {
         link.href = image;
         link.download = `receipt-${data.receiptNumber}.png`;
         link.click();
-        alert("Sharing not supported on this browser. Image has been downloaded.");
+        alert("Sharing not supported. Image has been downloaded.");
         router.push('/history');
       }
     } catch (err: any) { console.error(err); }
   };
 
   const colors = ['#09090b', '#166534', '#1e40af', '#b45309', '#7e22ce', '#be123c', '#0891b2', '#854d0e'];
-
   if (!isClient || authLoading) return null;
 
   return (
@@ -219,26 +200,25 @@ export default function Generator() {
       <header className="bg-white border-b border-zinc-200 px-4 py-3 flex justify-between items-center z-30 shrink-0">
         <div className="flex items-center gap-2">
             <Link href={user ? "/dashboard" : "/"} className="text-zinc-500 p-2 hover:bg-zinc-100 rounded-full transition-colors"><ArrowLeft size={22} /></Link>
-            <h1 className="font-bold text-lg text-zinc-900">New Receipt</h1>
+            <h1 className="font-bold text-lg text-zinc-900 tracking-tight">New Receipt</h1>
         </div>
         <div className="flex items-center gap-2">
             <button onClick={() => initiateAction(handleShare)} disabled={isGenerating} className="bg-zinc-100 text-zinc-900 p-2.5 rounded-full shadow-sm active:scale-95 transition-all">
-                {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Share2 size={18} />}
+                {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : !user ? <Lock size={16} /> : <Share2 size={18} />}
             </button>
             <button onClick={() => initiateAction(handleDownload)} disabled={isGenerating} className="bg-zinc-900 text-white p-2.5 rounded-full shadow-sm active:scale-95 transition-all">
-                {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <Download size={18} />}
+                {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : !user ? <Lock size={16} /> : <Download size={18} />}
             </button>
         </div>
       </header>
 
       <div className="flex-1 relative overflow-hidden flex flex-col md:flex-row">
+        {/* Form Side with Overlap Fixes */}
         <div className={`flex-1 h-full overflow-y-auto bg-zinc-50 p-4 md:p-6 space-y-6 ${activeTab === 'preview' ? 'hidden md:block' : 'block'}`}>
           <div className="max-w-2xl mx-auto space-y-6 pb-24 md:pb-10">
             <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-              <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-50 pb-2">
-                <Settings size={16} className="text-zinc-400" /> Customer Details
-              </h3>
-              <input value={data.customerName} onChange={(e) => setData({...data, customerName: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-zinc-50 focus:bg-white transition-all text-base" placeholder="Customer Name" />
+              <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-50 pb-2"><Settings size={16} className="text-zinc-400" /> Customer Details</h3>
+              <input value={data.customerName} onChange={(e) => setData({...data, customerName: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-zinc-50 focus:bg-white text-base" placeholder="Customer Name" />
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold text-zinc-400 ml-1 mb-1">RECEIPT NO.</label>
@@ -246,7 +226,7 @@ export default function Generator() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold text-zinc-400 ml-1 mb-1 uppercase">Date</label>
-                  <input value={data.date} onChange={(e) => setData({...data, date: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl outline-none focus:border-zinc-900 bg-zinc-50 focus:bg-white text-base" />
+                  <input value={data.date} onChange={(e) => setData({...data, date: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl outline-none font-medium bg-zinc-50 focus:bg-white text-base" />
                 </div>
               </div>
             </section>
@@ -262,7 +242,7 @@ export default function Generator() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
                       <div className="flex-1">
                         <label className="text-[10px] font-bold text-zinc-400 mb-1 block md:hidden uppercase">Item Description</label>
-                        <input placeholder="e.g. Graphic Design" value={item.name} onChange={(e) => handleItemChange(item.id, 'name', e.target.value)} className="w-full p-3 text-base border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-white md:bg-zinc-50" />
+                        <input placeholder="Item Name" value={item.name} onChange={(e) => handleItemChange(item.id, 'name', e.target.value)} className="w-full p-3 text-base border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-white md:bg-zinc-50" />
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <div className="w-20 md:w-24">
@@ -273,38 +253,17 @@ export default function Generator() {
                           <label className="text-[10px] font-bold text-zinc-400 mb-1 block md:hidden uppercase">Price</label>
                           <input type="number" placeholder="0" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', e.target.value)} className="w-full p-3 text-base border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-bold bg-white md:bg-zinc-50" />
                         </div>
-                        <button onClick={() => removeItem(item.id)} className="p-3 text-zinc-300 hover:text-red-500 transition-colors self-end md:self-center">
-                          <Trash2 size={20}/>
-                        </button>
+                        <button onClick={() => removeItem(item.id)} className="p-3 text-zinc-300 hover:text-red-500 self-end md:self-center"><Trash2 size={20}/></button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
-
-            <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-               <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider">Pricing & Method</h3>
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-zinc-400 ml-1 uppercase">Discount</label>
-                    <input type="number" placeholder="0" value={data.discount} onChange={(e) => setData({...data, discount: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl outline-none focus:border-zinc-900 bg-zinc-50 focus:bg-white text-base" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-zinc-400 ml-1 uppercase">Shipping</label>
-                    <input type="number" placeholder="0" value={data.shipping} onChange={(e) => setData({...data, shipping: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl outline-none focus:border-zinc-900 bg-zinc-50 focus:bg-white text-base" />
-                  </div>
-                  <select value={data.paymentMethod} onChange={(e) => setData({...data, paymentMethod: e.target.value as any})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl bg-white outline-none focus:border-zinc-900 text-sm">
-                     <option>Transfer</option><option>Cash</option><option>POS</option>
-                  </select>
-                  <select value={data.status} onChange={(e) => setData({...data, status: e.target.value as any})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl bg-white outline-none focus:border-zinc-900 text-sm">
-                     <option>Paid</option><option>Pending</option>
-                  </select>
-               </div>
-            </section>
           </div>
         </div>
 
+        {/* Preview Side */}
         <div className={`flex-1 h-full bg-zinc-200/50 flex flex-col relative ${activeTab === 'edit' ? 'hidden md:flex' : 'flex'}`}>
           <div className="bg-white/80 backdrop-blur-md border-b border-zinc-200 p-3 flex justify-between items-center z-10 shadow-sm shrink-0">
              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
@@ -317,25 +276,16 @@ export default function Generator() {
                <button onClick={() => setSettings({...settings, template: settings.template === 'simple' ? 'detailed' : 'simple'})} className="px-3 py-1.5 rounded-full text-xs font-bold bg-white shadow-sm border border-zinc-100 text-zinc-700">{settings.template === 'simple' ? 'Simple' : 'Detailed'}</button>
              </div>
           </div>
-
           <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-zinc-100/50 relative">
-             {!user && (
-               <div id="preview-watermark" className="absolute inset-0 pointer-events-none z-50 flex flex-col items-center justify-center overflow-hidden opacity-10">
-                  <div className="grid grid-cols-2 gap-12 rotate-[-15deg] scale-150">
-                     {[...Array(12)].map((_, i) => (
-                        <span key={i} className="text-4xl font-black text-black whitespace-nowrap">PREVIEW ONLY</span>
-                     ))}
-                  </div>
-               </div>
-             )}
-             <div className="scale-[0.75] md:scale-100 origin-center transition-transform">
+             <div className="scale-[0.85] md:scale-100 transition-transform">
                <ReceiptPreview data={data} settings={settings} receiptRef={receiptRef} />
              </div>
           </div>
         </div>
 
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-zinc-200 flex z-40 pb-safe shadow-lg">
-          <button onClick={() => setActiveTab('edit')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'edit' ? 'text-zinc-900 bg-zinc-100' : 'text-zinc-400'}`}>Edit Details</button>
+        {/* Mobile Tabs */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex z-40 pb-safe shadow-lg">
+          <button onClick={() => setActiveTab('edit')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'edit' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-400'}`}>Edit Details</button>
           <div className="w-[1px] bg-zinc-200 h-6 self-center"></div>
           <button onClick={() => setActiveTab('preview')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'preview' ? 'text-zinc-900 bg-zinc-100' : 'text-zinc-400'}`}>Live Preview</button>
         </div>
