@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { 
-  Search, Filter, Download, Trash2, Plus, 
-  Calendar, CheckCircle2, Clock, Loader2, Eye, X 
+  Download, Share2, Trash2, Plus, 
+  Loader2, Eye, X 
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/AuthContext';
@@ -20,7 +20,7 @@ export default function History() {
   const [statusFilter, setStatusFilter] = useState('All');
   
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,23 +42,52 @@ export default function History() {
     setLoading(false);
   };
 
-  const handleDownloadAgain = async () => {
-    if (!downloadRef.current) return;
-    setIsDownloading(true);
-    // Short delay to ensure SVG and fonts are ready
-    await new Promise(r => setTimeout(r, 100));
+  const generateImage = async () => {
+    if (!downloadRef.current) return null;
+    setIsGenerating(true);
+    await new Promise(r => setTimeout(r, 400));
     try {
       const canvas = await html2canvas(downloadRef.current, { 
         scale: 3, 
         useCORS: true,
-        backgroundColor: null,
-        logging: false
+        backgroundColor: null
       });
-      const link = document.createElement('a');
-      link.href = canvas.toDataURL("image/png", 1.0);
-      link.download = `receipt-${selectedReceipt.receipt_number}.png`;
-      link.click();
-    } catch (err) { console.error(err); } finally { setIsDownloading(false); }
+      return canvas.toDataURL("image/png", 1.0);
+    } catch (err) { 
+        return null; 
+    } finally { 
+        setIsGenerating(false); 
+    }
+  };
+
+  const handleDownload = async () => {
+    const image = await generateImage();
+    if (!image) return;
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = `receipt-${selectedReceipt.receipt_number}.png`;
+    link.click();
+  };
+
+  const handleShare = async () => {
+    const image = await generateImage();
+    if (!image) return;
+    try {
+        const res = await fetch(image);
+        const blob = await res.blob();
+        const file = new File([blob], `receipt-${selectedReceipt.receipt_number}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: `Receipt #${selectedReceipt.receipt_number}`,
+                text: `Hello ${selectedReceipt.customer_name || 'Customer'}, here is your receipt.`,
+            });
+        } else {
+            handleDownload();
+            alert("Sharing not supported. Image downloaded instead.");
+        }
+    } catch (err) { console.error(err); }
   };
 
   const filteredReceipts = receipts.filter(r => 
@@ -76,13 +105,6 @@ export default function History() {
           <Link href="/generate" className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"><Plus size={18} /> New Receipt</Link>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-zinc-200 mb-6 flex flex-col md:flex-row gap-4">
-          <input type="text" placeholder="Search customer or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-96 px-4 py-2 bg-zinc-50 border rounded-lg text-sm outline-none focus:border-zinc-900" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-zinc-50 border text-sm rounded-lg p-2 outline-none w-full md:w-40 cursor-pointer">
-             <option value="All">All Status</option><option value="Paid">Paid</option><option value="Pending">Pending</option>
-          </select>
-        </div>
-
         <div className="bg-white border rounded-xl overflow-hidden shadow-sm overflow-x-auto">
           <table className="w-full text-left min-w-[700px]">
             <thead className="bg-zinc-50 border-b text-xs uppercase text-zinc-500 font-bold">
@@ -98,10 +120,7 @@ export default function History() {
                   <td className="px-6 py-4 font-bold text-zinc-900">{r.customer_name}</td>
                   <td className="px-6 py-4 text-sm font-bold text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       <button onClick={() => setSelectedReceipt(r)} className="p-2 text-zinc-400 hover:text-zinc-900 transition-all"><Eye size={16}/></button>
-                       <button onClick={() => {/* Delete Logic */}} className="p-2 text-zinc-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
-                    </div>
+                    <button onClick={() => setSelectedReceipt(r)} className="p-2 bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-900 hover:text-white transition-all"><Eye size={18}/></button>
                   </td>
                 </tr>
               ))}
@@ -111,11 +130,11 @@ export default function History() {
       </main>
 
       {selectedReceipt && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-                <div className="p-4 border-b flex justify-between items-center bg-zinc-50">
-                    <h3 className="font-bold">Receipt Details</h3>
-                    <button onClick={() => setSelectedReceipt(null)} className="p-1 hover:bg-zinc-200 rounded-full"><X size={20}/></button>
+                <div className="p-4 border-b flex justify-between items-center">
+                    <h3 className="font-bold">View Receipt</h3>
+                    <button onClick={() => setSelectedReceipt(null)} className="p-1 hover:bg-zinc-100 rounded-full"><X size={20}/></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 bg-zinc-100/50 flex flex-col items-center">
                     <div className="scale-90 origin-top">
@@ -138,9 +157,11 @@ export default function History() {
                     </div>
                 </div>
                 <div className="p-4 border-t flex gap-3">
-                    <button onClick={() => setSelectedReceipt(null)} className="flex-1 py-3 bg-zinc-100 font-bold rounded-xl transition-colors hover:bg-zinc-200">Close</button>
-                    <button onClick={handleDownloadAgain} disabled={isDownloading} className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all">
-                        {isDownloading ? <Loader2 className="animate-spin w-5 h-5" /> : <Download size={18} />} Download Image
+                    <button onClick={handleShare} disabled={isGenerating} className="flex-1 py-3 bg-zinc-100 font-bold rounded-xl flex items-center justify-center gap-2">
+                        {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Share2 size={18} /> Share</>}
+                    </button>
+                    <button onClick={handleDownload} disabled={isGenerating} className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                        {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Download size={18} /> Download Image</>}
                     </button>
                 </div>
             </div>
@@ -149,4 +170,3 @@ export default function History() {
     </div>
   );
 }
-
