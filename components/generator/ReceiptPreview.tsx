@@ -17,7 +17,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
 
   return (
     <div className="flex justify-center items-start font-sans antialiased p-4 relative">
-      {/* Multiple Slanted Watermark for Guest Users */}
+      {/* 1. Multiple Slanted Watermark for Guest Users */}
       {!user && (
         <div className="absolute inset-0 z-50 pointer-events-none flex flex-col items-center justify-center overflow-hidden opacity-[0.06]">
           {[...Array(15)].map((_, i) => (
@@ -34,8 +34,8 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
         className="relative text-zinc-900 leading-tight drop-shadow-xl overflow-hidden"
         style={{ width: '320px', backgroundColor: '#ffffff' }}
       >
-        {/* REPEATED SLANTED BACKGROUND PATTERN (Logo or Initial) */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 flex flex-wrap gap-14 p-6 rotate-[-15deg] scale-125 justify-center items-center">
+        {/* 2. Repeated Slanted Background Logo Pattern (Clearer at 0.07 opacity) */}
+        <div className="absolute inset-0 opacity-[0.07] pointer-events-none z-0 flex flex-wrap gap-14 p-6 rotate-[-15deg] scale-125 justify-center items-center">
           {[...Array(24)].map((_, i) => (
             <div key={i} className="w-8 h-8 flex items-center justify-center">
               {data.logoUrl ? (
@@ -153,6 +153,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
             </div>
         </div>
 
+        {/* 3. Zigzag Bottom Edge */}
         <div 
            className="w-full h-[6px] relative z-20" 
            style={{ 

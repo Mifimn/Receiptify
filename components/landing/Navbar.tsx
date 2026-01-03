@@ -29,8 +29,8 @@ export default function Navbar() {
             transition-all duration-300
             border
             ${scrolled 
-              ? 'bg-white/70 backdrop-blur-xl border-white/50 shadow-lg shadow-black/5' // Strong Glass
-              : 'bg-white/50 backdrop-blur-lg border-white/30 shadow-sm' // Subtle Glass
+              ? 'bg-white/70 backdrop-blur-xl border-white/50 shadow-lg shadow-black/5' 
+              : 'bg-white/50 backdrop-blur-lg border-white/30 shadow-sm' 
             }
           `}
         >
@@ -42,10 +42,10 @@ export default function Navbar() {
             <span className="font-bold text-zinc-900 text-lg tracking-tight">MifimnPay</span>
           </Link>
 
-          {/* Desktop Links */}
+          {/* Desktop Links - Updated for global navigation */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-600">
-            <Link href="#how-it-works" className="hover:text-zinc-900 transition-colors">How it Works</Link>
-            <Link href="#testimonials" className="hover:text-zinc-900 transition-colors">Testimonials</Link>
+            <Link href="/" className="hover:text-zinc-900 transition-colors">Home</Link>
+            <Link href="/#how-it-works" className="hover:text-zinc-900 transition-colors">How it Works</Link>
             <Link href="/login" className="hover:text-zinc-900 transition-colors">Pricing</Link>
           </div>
 
@@ -76,9 +76,9 @@ export default function Navbar() {
               transition={{ duration: 0.2 }}
               className="absolute top-20 left-4 right-4 bg-white/90 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/50 p-6 md:hidden flex flex-col gap-4 z-40"
             >
-              <Link href="#how-it-works" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100/50">How it Works</Link>
-              <Link href="#testimonials" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100/50">Testimonials</Link>
-              <Link href="/login" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2">Log In</Link>
+              <Link href="/" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100/50">Home</Link>
+              <Link href="/#how-it-works" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100/50">How it Works</Link>
+              <Link href="/login" onClick={() => setIsOpen(false)} className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100/50">Log In</Link>
               <Link href="/generate" onClick={() => setIsOpen(false)} className="bg-zinc-900 text-center text-white text-lg font-medium px-5 py-3 rounded-xl shadow-lg">
                 Create Receipt Now
               </Link>
