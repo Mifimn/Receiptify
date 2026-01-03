@@ -1,31 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { 
-  Search, Filter, Download, Trash2, Plus, 
-  Calendar, CheckCircle2, Clock, Loader2, Eye, X 
-} from 'lucide-react';
+import { Download, Share2, Plus, Loader2, Eye, X, Search } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/AuthContext';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 import ReceiptPreview from '../components/generator/ReceiptPreview';
-// Changed to toPng from html-to-image
 import { toPng } from 'html-to-image';
 
 export default function History() {
   const { user } = useAuth();
   const [receipts, setReceipts] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user) fetchReceipts();
+    if (user) {
+        fetchReceipts();
+        fetchProfile();
+    }
   }, [user]);
+
+  const fetchProfile = async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', user?.id).single();
+    if (data) setProfile(data);
+  };
 
   const fetchReceipts = async () => {
     setLoading(true);
@@ -34,24 +39,52 @@ export default function History() {
     setLoading(false);
   };
 
-  const handleDownloadAgain = async () => {
-    if (!downloadRef.current) return;
-    setIsDownloading(true);
+  const generateImage = async () => {
+    if (!downloadRef.current) return null;
+    setIsGenerating(true);
     try {
-      // Switched to toPng with pixelRatio for better UI clarity
       const dataUrl = await toPng(downloadRef.current, { 
-        pixelRatio: 3, 
-        cacheBust: true 
+        cacheBust: true, 
+        pixelRatio: 4, 
+        quality: 1,
+        backgroundColor: '#ffffff'
       });
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `receipt-${selectedReceipt.receipt_number}.png`;
-      link.click();
+      return dataUrl;
     } catch (err) { 
-      console.error(err); 
+        console.error(err);
+        return null; 
     } finally { 
-      setIsDownloading(false); 
+        setIsGenerating(false); 
     }
+  };
+
+  const handleDownload = async () => {
+    const image = await generateImage();
+    if (!image) return;
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = `receipt-${selectedReceipt.receipt_number}.png`;
+    link.click();
+  };
+
+  const handleShare = async () => {
+    const image = await generateImage();
+    if (!image) return;
+    try {
+        const res = await fetch(image);
+        const blob = await res.blob();
+        const file = new File([blob], `receipt-${selectedReceipt.receipt_number}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'Receipt',
+                text: `Receipt from ${profile?.business_name || 'MifimnPay'}`,
+            });
+        } else {
+            handleDownload();
+        }
+    } catch (err) { console.error(err); }
   };
 
   const filteredReceipts = receipts.filter(r => 
@@ -64,73 +97,98 @@ export default function History() {
       <Head><title>History | MifimnPay</title></Head>
       <DashboardNavbar />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Receipt History</h1>
-          <Link href="/generate" className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"><Plus size={18} /> New Receipt</Link>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <h1 className="text-2xl font-black leading-none">Receipt History</h1>
+          <Link href="/generate" className="bg-zinc-900 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg active:scale-95 leading-none">
+            <Plus size={18} /> New Receipt
+          </Link>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-zinc-200 mb-6 flex flex-col md:flex-row gap-4">
-          <input type="text" placeholder="Search customer or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-96 px-4 py-2 bg-zinc-50 border rounded-lg text-sm outline-none focus:border-zinc-900" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-zinc-50 border text-sm rounded-lg p-2 outline-none w-full md:w-40 cursor-pointer">
-             <option value="All">All Status</option><option value="Paid">Paid</option><option value="Pending">Pending</option>
-          </select>
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input 
+                    type="text" 
+                    placeholder="Search name or ID..." 
+                    className="w-full h-12 pl-12 pr-4 bg-white border border-zinc-200 rounded-2xl outline-none focus:border-zinc-900"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <select className="h-12 px-4 bg-white border border-zinc-200 rounded-2xl outline-none focus:border-zinc-900 font-bold text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="All">All Status</option>
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+            </select>
         </div>
 
-        <div className="bg-white border rounded-xl overflow-hidden shadow-sm overflow-x-auto">
-          <table className="w-full text-left min-w-[700px]">
-            <thead className="bg-zinc-50 border-b text-xs uppercase text-zinc-500 font-bold">
-              <tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Customer</th><th className="px-6 py-4">Total Amount</th><th className="px-6 py-4 text-right">Actions</th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {loading ? (
-                <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-zinc-300" /></td></tr>
-              ) : filteredReceipts.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-50/50 group transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs font-bold text-zinc-500">{r.receipt_number}</td>
-                  <td className="px-6 py-4 text-sm text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 font-bold text-zinc-900">{r.customer_name}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                       <button onClick={() => setSelectedReceipt(r)} className="p-2 text-zinc-400 hover:text-zinc-900 transition-all"><Eye size={16}/></button>
-                       <button onClick={() => {/* Delete Logic */}} className="p-2 text-zinc-400 hover:text-red-600 transition-all"><Trash2 size={16}/></button>
-                    </div>
-                  </td>
+        <div className="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm overflow-x-auto">
+            <table className="w-full text-left min-w-[700px]">
+                <thead className="bg-zinc-50 border-b border-zinc-100 text-[10px] uppercase text-zinc-400 font-black tracking-widest">
+                <tr>
+                    <th className="px-6 py-4 text-center">Receipt ID</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Customer</th>
+                    <th className="px-6 py-4">Total Amount</th>
+                    <th className="px-6 py-4 text-right">View</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                {loading ? (
+                    <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-zinc-300" /></td></tr>
+                ) : filteredReceipts.length === 0 ? (
+                    <tr><td colSpan={5} className="py-20 text-center text-zinc-400 font-medium">No receipts found.</td></tr>
+                ) : filteredReceipts.map((r) => (
+                    <tr key={r.id} className="hover:bg-zinc-50/50 group transition-colors">
+                    <td className="px-6 py-4 font-mono text-xs font-bold text-zinc-500 text-center">#{r.receipt_number}</td>
+                    <td className="px-6 py-4 text-sm font-medium">{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
+                    <td className="px-6 py-4 font-bold">{r.customer_name}</td>
+                    <td className="px-6 py-4 text-sm font-black">₦{Number(r.total_amount).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right">
+                        {/* Removed Delete Button from here */}
+                        <button onClick={() => setSelectedReceipt(r)} className="p-3 bg-zinc-100 text-zinc-900 rounded-2xl hover:bg-zinc-900 hover:text-white transition-all active:scale-90"><Eye size={18}/></button>
+                    </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
         </div>
       </main>
 
       {selectedReceipt && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-                <div className="p-4 border-b flex justify-between items-center bg-zinc-50">
-                    <h3 className="font-bold">Receipt Details</h3>
-                    <button onClick={() => setSelectedReceipt(null)} className="p-1 hover:bg-zinc-200 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-[40px] shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 overflow-hidden">
+                <div className="p-6 border-b flex justify-between items-center bg-white shrink-0">
+                    <h3 className="font-black text-zinc-900 text-lg">Receipt Details</h3>
+                    <button onClick={() => setSelectedReceipt(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors leading-none"><X size={24}/></button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 bg-zinc-100/50 flex flex-col items-center">
-                    <div className="scale-90 origin-top">
+                <div className="flex-1 overflow-y-auto p-8 bg-zinc-50 flex flex-col items-center">
+                    <div className="origin-top bg-white p-1 rounded shadow-xl shrink-0 overflow-hidden" ref={downloadRef}>
                         <ReceiptPreview 
                             data={{
                                 ...selectedReceipt,
                                 customerName: selectedReceipt.customer_name,
                                 receiptNumber: selectedReceipt.receipt_number,
-                                currency: '₦',
+                                businessName: profile?.business_name,
+                                businessPhone: profile?.business_phone,
+                                logoUrl: profile?.logo_url,
+                                currency: profile?.currency || '₦',
                                 shipping: Number(selectedReceipt.shipping_fee || 0),
                                 discount: Number(selectedReceipt.discount_amount || 0),
-                                items: selectedReceipt.items || []
+                                items: selectedReceipt.items || [],
+                                // FIXED: Pulling the correct date from database timestamp
+                                date: new Date(selectedReceipt.created_at).toLocaleDateString('en-GB')
                             }} 
-                            settings={{ color: '#09090b', showLogo: true, template: 'detailed' }} 
-                            receiptRef={downloadRef} 
+                            settings={{ color: profile?.theme_color || '#09090b', showLogo: true, template: 'detailed' }} 
                         />
                     </div>
                 </div>
-                <div className="p-4 border-t flex gap-3">
-                    <button onClick={() => setSelectedReceipt(null)} className="flex-1 py-3 bg-zinc-100 font-bold rounded-xl transition-colors hover:bg-zinc-200">Close</button>
-                    <button onClick={handleDownloadAgain} disabled={isDownloading} className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all">
-                        {isDownloading ? <Loader2 className="animate-spin w-5 h-5" /> : <Download size={18} />} Download Image
+                <div className="p-8 bg-white border-t flex flex-col gap-4 shrink-0">
+                    <button onClick={handleShare} disabled={isGenerating} className="w-full py-5 bg-zinc-100 text-zinc-900 font-black rounded-3xl flex items-center justify-center gap-3 active:scale-95 transition-all leading-none">
+                        {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Share2 size={20} /> Share Receipt</>}
+                    </button>
+                    <button onClick={handleDownload} disabled={isGenerating} className="w-full py-5 bg-zinc-900 text-white font-black rounded-3xl flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl leading-none">
+                        {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Download size={20} /> Download PNG</>}
                     </button>
                 </div>
             </div>
