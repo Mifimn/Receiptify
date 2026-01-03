@@ -65,14 +65,15 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest text-right">Amount</span>
                 </div>
 
-                <div className="space-y-4 pt-1"> 
+                {/* Fixed Overlapping: Added more space-y and controlled leading */}
+                <div className="space-y-5 pt-1"> 
                     {data.items.length === 0 ? (
                         <p className="text-[10px] text-center text-zinc-300 py-2 italic font-medium">No items listed</p>
                     ) : (
                         data.items.map((item) => (
-                        <div key={item.id} className="grid grid-cols-[1fr_auto] gap-3 items-start min-h-[24px]">
+                        <div key={item.id} className="grid grid-cols-[1fr_auto] gap-3 items-start min-h-[32px]">
                             <div className="flex flex-col min-w-0 pr-2">
-                                <span className="text-[11px] font-black text-zinc-800 break-words leading-tight mb-0.5">
+                                <span className="text-[11px] font-black text-zinc-800 break-words leading-relaxed mb-1">
                                     {item.name || 'Item Name'}
                                 </span>
                                 {settings.template === 'detailed' && (
@@ -81,7 +82,7 @@ export default function ReceiptPreview({ data, settings, receiptRef }: Props) {
                                     </span>
                                 )}
                             </div>
-                            <div className="text-right self-start">
+                            <div className="text-right self-start pt-0.5">
                                 <span className="text-[11px] font-black text-zinc-900 whitespace-nowrap">
                                     {data.currency}{((Number(item.qty) || 0) * (Number(item.price) || 0)).toLocaleString()}
                                 </span>
