@@ -45,10 +45,11 @@ export default function History() {
   const generateImage = async () => {
     if (!downloadRef.current) return null;
     setIsGenerating(true);
-    await new Promise(r => setTimeout(r, 400));
+    // Increased timeout to ensure clean rendering before capture
+    await new Promise(r => setTimeout(r, 600));
     try {
       const canvas = await html2canvas(downloadRef.current, { 
-        scale: 3, 
+        scale: 4, // Increased scale for better text quality
         useCORS: true,
         backgroundColor: null
       });
@@ -81,11 +82,11 @@ export default function History() {
             await navigator.share({
                 files: [file],
                 title: `Receipt #${selectedReceipt.receipt_number}`,
-                text: `Hello ${selectedReceipt.customer_name || 'Customer'}, here is your receipt.`,
+                text: `Hello, here is your receipt from ${profile?.business_name || 'MifimnPay'}.`,
             });
         } else {
             handleDownload();
-            alert("Sharing not supported. Image downloaded instead.");
+            alert("Sharing not supported on this browser. Image has been downloaded.");
         }
     } catch (err) { console.error(err); }
   };
@@ -132,9 +133,9 @@ export default function History() {
       {selectedReceipt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-                <div className="p-4 border-b flex justify-between items-center">
-                    <h3 className="font-bold">View Receipt</h3>
-                    <button onClick={() => setSelectedReceipt(null)} className="p-1 hover:bg-zinc-100 rounded-full"><X size={20}/></button>
+                <div className="p-4 border-b flex justify-between items-center bg-zinc-50">
+                    <h3 className="font-bold text-zinc-800">View Receipt Details</h3>
+                    <button onClick={() => setSelectedReceipt(null)} className="p-1 hover:bg-zinc-200 rounded-full"><X size={20}/></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 bg-zinc-100/50 flex flex-col items-center">
                     <div className="scale-90 origin-top">
@@ -157,10 +158,18 @@ export default function History() {
                     </div>
                 </div>
                 <div className="p-4 border-t flex gap-3">
-                    <button onClick={handleShare} disabled={isGenerating} className="flex-1 py-3 bg-zinc-100 font-bold rounded-xl flex items-center justify-center gap-2">
+                    <button 
+                        onClick={handleShare} 
+                        disabled={isGenerating} 
+                        className="flex-1 py-3 bg-zinc-100 text-zinc-900 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-200 active:scale-95 transition-all"
+                    >
                         {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Share2 size={18} /> Share</>}
                     </button>
-                    <button onClick={handleDownload} disabled={isGenerating} className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                    <button 
+                        onClick={handleDownload} 
+                        disabled={isGenerating} 
+                        className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-800 active:scale-95 transition-all"
+                    >
                         {isGenerating ? <Loader2 className="animate-spin w-5 h-5" /> : <><Download size={18} /> Download Image</>}
                     </button>
                 </div>
