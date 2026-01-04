@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
@@ -11,17 +11,26 @@ import DashboardNavbar from '../components/dashboard/DashboardNavbar';
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  
+  // State for raw data
+  const [allReceipts, setAllReceipts] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalSales: 0, count: 0, customers: 0 });
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [view, setView] = useState<'monthly' | 'yearly'>('monthly');
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [businessName, setBusinessName] = useState('Vendor');
   const [isFetching, setIsFetching] = useState(true);
 
+  // State for Filters
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const years = Array.from({ length: currentYear - 2026 + 1 }, (_, i) => 2026 + i);
+
   useEffect(() => {
     if (!loading && !user) router.push('/login');
     if (user) checkOnboardingAndFetch();
-  }, [user, loading, view]); // Re-run when view changes
+  }, [user, loading]);
 
   const checkOnboardingAndFetch = async () => {
     setIsFetching(true);
@@ -45,29 +54,10 @@ export default function Dashboard() {
         .order('created_at', { ascending: true });
 
       if (receipts) {
+        setAllReceipts(receipts);
         const total = receipts.reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
         const uniqueCustomers = new Set(receipts.map(r => r.customer_name)).size;
         setStats({ totalSales: total, count: receipts.length, customers: uniqueCustomers });
-
-        if (view === 'monthly') {
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const monthlyMap = receipts.reduce((acc: any, r) => {
-            const m = months[new Date(r.created_at).getMonth()];
-            acc[m] = (acc[m] || 0) + (Number(r.total_amount) || 0);
-            return acc;
-          }, {});
-          setChartData(months.map(m => ({ name: m, total: monthlyMap[m] || 0 })));
-        } else {
-          const yearlyMap = receipts.reduce((acc: any, r) => {
-            const y = new Date(r.created_at).getFullYear().toString();
-            acc[y] = (acc[y] || 0) + (Number(r.total_amount) || 0);
-            return acc;
-          }, {});
-          // Sort years numerically
-          const sortedYears = Object.keys(yearlyMap).sort((a, b) => Number(a) - Number(b));
-          setChartData(sortedYears.map(y => ({ name: y, total: yearlyMap[y] || 0 })));
-        }
-
         setRecentReceipts([...receipts].reverse().slice(0, 5));
       }
     } catch (err) {
@@ -76,6 +66,39 @@ export default function Dashboard() {
       setIsFetching(false);
     }
   };
+
+  // Memoized Chart Data Processing
+  const chartData = useMemo(() => {
+    if (selectedMonth === "all") {
+      // Monthly View for the selected year
+      return months.map((m, index) => {
+        const total = allReceipts
+          .filter(r => {
+            const d = new Date(r.created_at);
+            return d.getFullYear() === selectedYear && d.getMonth() === index;
+          })
+          .reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
+        return { name: m, total };
+      });
+    } else {
+      // Daily View for the specific month
+      const monthIndex = months.indexOf(selectedMonth);
+      const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
+      
+      return Array.from({ length: daysInMonth }, (_, i) => {
+        const day = i + 1;
+        const total = allReceipts
+          .filter(r => {
+            const d = new Date(r.created_at);
+            return d.getFullYear() === selectedYear && 
+                   d.getMonth() === monthIndex && 
+                   d.getDate() === day;
+          })
+          .reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
+        return { name: `${day}`, total };
+      });
+    }
+  }, [allReceipts, selectedYear, selectedMonth]);
 
   if (loading || isFetching) return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
@@ -89,28 +112,40 @@ export default function Dashboard() {
       <DashboardNavbar />
       
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Business Overview</h1>
             <p className="text-zinc-500 font-medium">Performance tracking for {businessName}.</p>
           </motion.div>
-          
-          <div className="flex bg-zinc-200/50 p-1 rounded-xl w-fit">
-            <button 
-              onClick={() => setView('monthly')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${view === 'monthly' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              Monthly
-            </button>
-            <button 
-              onClick={() => setView('yearly')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${view === 'yearly' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              Yearly
-            </button>
+
+          {/* Filters Section */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 transition-all cursor-pointer shadow-sm"
+              >
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" size={14} />
+            </div>
+
+            <div className="relative">
+              <select 
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 transition-all cursor-pointer shadow-sm"
+              >
+                <option value="all">Full Year (Monthly)</option>
+                {months.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <TrendingUp className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" size={14} />
+            </div>
           </div>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatsCard title="Total Revenue" value={`₦${stats.totalSales.toLocaleString()}`} icon={<TrendingUp size={20} />} color="text-green-600" />
           <StatsCard title="Receipts Issued" value={stats.count.toString()} icon={<FileText size={20} />} color="text-blue-600" />
@@ -119,12 +154,15 @@ export default function Dashboard() {
 
         {/* Sales Chart Analysis */}
         <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
             <div>
-              <h3 className="font-bold text-zinc-900 text-lg">Revenue Trend</h3>
-              <p className="text-xs text-zinc-400 font-bold uppercase tracking-[0.15em]">{view} Sales Performance</p>
+              <h3 className="font-bold text-zinc-900 text-lg">
+                {selectedMonth === "all" ? `Revenue Trend (${selectedYear})` : `${selectedMonth} ${selectedYear} Daily Breakdown`}
+              </h3>
+              <p className="text-xs text-zinc-400 font-bold uppercase tracking-[0.15em]">
+                {selectedMonth === "all" ? "Monthly Cumulative" : "Daily Sales Tracking"}
+              </p>
             </div>
-            <Calendar className="text-zinc-300" size={20} />
           </div>
           
           <div className="h-[320px] w-full">
@@ -132,7 +170,7 @@ export default function Dashboard() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#09090b" stopOpacity={0.08}/>
+                    <stop offset="5%" stopColor="#09090b" stopOpacity={0.1}/>
                     <stop offset="95%" stopColor="#09090b" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
@@ -141,31 +179,17 @@ export default function Dashboard() {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fontSize: 12, fill: '#9ca3af', fontWeight: 600}} 
+                  tick={{fontSize: 10, fill: '#9ca3af', fontWeight: 600}} 
                   dy={10} 
+                  interval={selectedMonth === "all" ? 0 : 2}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 10, fill: '#d1d5db', fontWeight: 600}} 
-                  tickFormatter={(val) => `₦${val >= 1000 ? (val/1000).toFixed(0)+'k' : val}`}
-                />
+                <YAxis hide />
                 <Tooltip 
-                  cursor={{ stroke: '#09090b', strokeWidth: 1, strokeDasharray: '5 5' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '12px' }}
-                  itemStyle={{ fontWeight: 800, color: '#09090b' }}
-                  labelStyle={{ color: '#9ca3af', fontWeight: 600, marginBottom: '4px' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}
                   formatter={(value: any) => [`₦${value.toLocaleString()}`, 'Revenue']}
+                  labelFormatter={(label) => selectedMonth === "all" ? label : `${selectedMonth} ${label}`}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="total" 
-                  stroke="#09090b" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#colorTotal)"
-                  animationDuration={1500}
-                />
+                <Area type="monotone" dataKey="total" stroke="#09090b" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
