@@ -1,238 +1,115 @@
-import { useEffect, useState } from 'react';
-import Head from 'next/head';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { 
-  Plus, History, Settings, LogOut, 
-  TrendingUp, FileText, User, Loader2 
-} from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer 
-} from 'recharts';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../lib/AuthContext';
-import ProfileAlert from '../components/dashboard/ProfileAlert';
+import { Bell, User, LayoutGrid, History, Settings, LogOut, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../lib/AuthContext';
 
-export default function Dashboard() {
-  const { user, loading: authLoading, signOut } = useAuth();
+export default function DashboardNavbar() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<{ business_name: string; logo_url: string | null } | null>(null);
 
-  // State for dashboard data
-  const [stats, setStats] = useState({ totalRevenue: 0, totalReceipts: 0 });
-  const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch Dashboard Data
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
+    if (user) {
+      const fetchProfile = async () => {
+        const { data } = await supabase.from('profiles').select('business_name, logo_url').eq('id', user.id).single();
+        if (data) setProfile(data);
+      };
+      fetchProfile();
+    }
+  }, [user]);
 
-      try {
-        setLoading(true);
-
-        // 1. Fetch Headlines (Using the SQL Function we created)
-        // This is FAST and won't crash even with 1,000,000 receipts
-        const { data: statsData, error: statsError } = await supabase
-          .rpc('get_dashboard_stats', { target_user_id: user.id });
-
-        if (!statsError && statsData) {
-          setStats({
-            totalRevenue: statsData.total_revenue || 0,
-            totalReceipts: statsData.total_receipts || 0
-          });
-        }
-
-        // 2. Fetch Recent Activity (Limit to last 5 only)
-        const { data: recent, error: recentError } = await supabase
-          .from('receipts')
-          .select('id, receipt_number, customer_name, total_amount, date:created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (!recentError && recent) {
-          setRecentReceipts(recent);
-        }
-
-        // 3. Fetch Chart Data (Last 7 Days Only)
-        // We fetch minimal data just to draw the graph
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const { data: graphData } = await supabase
-          .from('receipts')
-          .select('created_at, total_amount')
-          .eq('user_id', user.id)
-          .gte('created_at', sevenDaysAgo.toISOString())
-          .order('created_at', { ascending: true });
-
-        if (graphData) {
-          // Group data by day for the chart
-          const formattedChart = processChartData(graphData);
-          setChartData(formattedChart);
-        }
-
-      } catch (error) {
-        console.error('Dashboard error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!authLoading) fetchDashboardData();
-  }, [user, authLoading]);
-
-  // Helper to group raw data by date for the chart
-  const processChartData = (data: any[]) => {
-    const grouped: any = {};
-    data.forEach(item => {
-      const date = new Date(item.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-      grouped[date] = (grouped[date] || 0) + Number(item.total_amount);
-    });
-    return Object.keys(grouped).map(date => ({ name: date, amount: grouped[date] }));
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     router.push('/login');
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-        <Loader2 className="animate-spin text-zinc-900" size={32} />
-      </div>
-    );
-  }
-
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
+  const isActive = (path: string) => router.pathname === path;
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20">
-      <Head><title>Dashboard | MifimnPay</title></Head>
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200 px-4 md:px-6 py-3">
+      <div className="max-w-6xl mx-auto flex justify-between items-center">
+        
+        <div className="flex items-center gap-8">
+          {/* Logo Section - Replaced placeholder with favicon.png */}
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <img 
+              src="/favicon.png" 
+              alt="MifimnPay" 
+              className="w-8 h-8 rounded-lg shadow-sm object-cover" 
+            />
+            <span className="font-bold text-zinc-900 text-lg hidden md:block tracking-tight">MifimnPay</span>
+          </Link>
 
-      {/* Header */}
-      <header className="bg-white border-b border-zinc-200 px-6 py-4 sticky top-0 z-30 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-zinc-900 tracking-tight">Overview</h1>
-        <button onClick={handleSignOut} className="p-2 text-zinc-400 hover:text-red-600 transition-colors">
-          <LogOut size={20} />
-        </button>
-      </header>
-
-      {/* Profile Alert Component */}
-      <ProfileAlert />
-
-      <main className="max-w-md mx-auto p-6 space-y-6">
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-2 text-zinc-500">
-              <div className="p-1.5 bg-green-100 text-green-700 rounded-lg"><TrendingUp size={16} /></div>
-              <span className="text-xs font-bold uppercase tracking-wider">Revenue</span>
-            </div>
-            <p className="text-2xl font-black text-zinc-900">₦{stats.totalRevenue.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-2 text-zinc-500">
-              <div className="p-1.5 bg-blue-100 text-blue-700 rounded-lg"><FileText size={16} /></div>
-              <span className="text-xs font-bold uppercase tracking-wider">Receipts</span>
-            </div>
-            <p className="text-2xl font-black text-zinc-900">{stats.totalReceipts}</p>
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-1 bg-zinc-100 p-1 rounded-lg">
+            <NavLink href="/dashboard" icon={<LayoutGrid size={16} />} label="Overview" active={isActive('/dashboard')} />
+            <NavLink href="/history" icon={<History size={16} />} label="History" active={isActive('/history')} />
+            <NavLink href="/settings" icon={<Settings size={16} />} label="Settings" active={isActive('/settings')} />
           </div>
         </div>
 
-        {/* Chart Section - FIXED HEIGHT Wrapper */}
-        <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm">
-          <h3 className="text-sm font-bold text-zinc-900 mb-6">Sales Trend (Last 7 Days)</h3>
-
-          {/* CRITICAL FIX: This div with h-[200px] ensures the chart 
-              always has a size, preventing the "width(-1)" crash.
-          */}
-          <div className="h-[200px] w-full"> 
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#18181b" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 10, fill: '#a1a1aa'}} 
-                    dy={10}
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
-                    itemStyle={{color: '#18181b', fontWeight: 'bold'}}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke="#18181b" 
-                    strokeWidth={2}
-                    fillOpacity={1} 
-                    fill="url(#colorSales)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-zinc-400">
-                <TrendingUp size={32} className="mb-2 opacity-50"/>
-                <p className="text-xs">No sales in last 7 days</p>
+        <div className="flex items-center gap-3">
+          <button className="p-2 text-zinc-400 hover:text-zinc-900 transition-all relative">
+            <Bell size={20} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+          </button>
+          
+          <div className="relative">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-3 focus:outline-none group">
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-bold text-zinc-900 truncate max-w-[120px]">{profile?.business_name || 'Vendor'}</p>
+                <p className="text-[10px] text-zinc-500">Free Plan</p>
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* Recent Activity */}
-        <section className="space-y-4">
-          <div className="flex justify-between items-end px-1">
-            <h3 className="text-sm font-bold text-zinc-900">Recent Activity</h3>
-            <Link href="/history" className="text-xs font-bold text-zinc-500 hover:text-zinc-900">View All</Link>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-            {recentReceipts.length > 0 ? (
-              <div className="divide-y divide-zinc-100">
-                {recentReceipts.map((receipt) => (
-                  <div key={receipt.id} className="p-4 flex justify-between items-center hover:bg-zinc-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
-                        <User size={18} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-zinc-900">{receipt.customer_name || 'Walk-in'}</p>
-                        <p className="text-[10px] text-zinc-500 font-medium uppercase">#{receipt.receipt_number} • {new Date(receipt.date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <span className="font-bold text-sm text-zinc-900">₦{Number(receipt.total_amount).toLocaleString()}</span>
-                  </div>
-                ))}
+              <div className="w-9 h-9 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200 flex items-center justify-center">
+                {profile?.logo_url ? <img src={profile.logo_url} className="w-full h-full object-cover" /> : <User size={18} className="text-zinc-400" />}
               </div>
-            ) : (
-              <div className="p-8 text-center text-zinc-400">
-                <p className="text-sm">No receipts yet.</p>
+              <div className="md:hidden p-1 hover:bg-zinc-100 rounded-lg">
+                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
               </div>
-            )}
-          </div>
-        </section>
-      </main>
+            </button>
 
-      {/* Floating Action Button */}
-      <Link href="/generate" className="fixed bottom-6 right-6 bg-zinc-900 text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-40">
-        <Plus size={24} />
-      </Link>
-    </div>
+            <AnimatePresence>
+              {isMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-zinc-200 z-50 overflow-hidden">
+                     <div className="px-4 py-3 border-b border-zinc-100 bg-zinc-50">
+                        <p className="text-sm font-bold text-zinc-900">{profile?.business_name || 'Vendor'}</p>
+                        <p className="text-xs text-zinc-500">Free Plan</p>
+                     </div>
+                     <div className="md:hidden p-2 border-b border-zinc-100">
+                        <MobileLink href="/dashboard" icon={<LayoutGrid size={16}/>} label="Overview" active={isActive('/dashboard')} onClick={() => setIsMenuOpen(false)} />
+                        <MobileLink href="/history" icon={<History size={16}/>} label="History" active={isActive('/history')} onClick={() => setIsMenuOpen(false)} />
+                        <MobileLink href="/settings" icon={<Settings size={16}/>} label="Settings" active={isActive('/settings')} onClick={() => setIsMenuOpen(false)} />
+                     </div>
+                     <div className="p-2">
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                           <LogOut size={16} /> Log Out
+                        </button>
+                     </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function NavLink({ href, icon, label, active }: any) {
+  return (
+    <Link href={href} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>{icon} {label}</Link>
+  );
+}
+
+function MobileLink({ href, icon, label, active, onClick }: any) {
+  return (
+    <Link href={href} onClick={onClick} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${active ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-600 hover:bg-zinc-50'}`}>{icon} {label}</Link>
   );
 }
