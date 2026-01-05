@@ -7,33 +7,42 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/AuthContext';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
+import ProfileAlert from '../components/dashboard/ProfileAlert'; // Added this back
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  
-  // State for raw data
-  const [allReceipts, setAllReceipts] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalSales: 0, count: 0, customers: 0 });
+
+  // State for data
+  const [yearReceipts, setYearReceipts] = useState<any[]>([]); // Only fetch ONE year at a time
+  const [stats, setStats] = useState({ totalSales: 0, count: 0, customers: 0 }); // Global stats
   const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [businessName, setBusinessName] = useState('Vendor');
   const [isFetching, setIsFetching] = useState(true);
 
-  // State for Filters
+  // Filters
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const years = Array.from({ length: currentYear - 2026 + 1 }, (_, i) => 2026 + i);
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i); // Last 5 years
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
-    if (user) checkOnboardingAndFetch();
+    if (user) {
+        checkProfile();
+        fetchGlobalStats(); // Fast RPC call
+    }
   }, [user, loading]);
 
-  const checkOnboardingAndFetch = async () => {
-    setIsFetching(true);
+  // Refetch chart data whenever Year changes
+  useEffect(() => {
+    if (user) fetchYearlyData(selectedYear);
+  }, [user, selectedYear]);
+
+  // 1. Check Profile & Business Name
+  const checkProfile = async () => {
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -41,66 +50,90 @@ export default function Dashboard() {
         .eq('id', user?.id)
         .single();
 
-      if (!profile?.business_name || profile.business_name === 'My Business') {
-        router.push('/onboarding');
-        return;
-      }
-      setBusinessName(profile.business_name);
+      if (profile) setBusinessName(profile.business_name || 'My Business');
+    } catch (err) { console.error(err); }
+  };
 
-      const { data: receipts } = await supabase
+  // 2. Fetch Global Stats (Total Revenue/Count) using RPC
+  // This is the "Time Bomb" fix. It calculates totals on the server.
+  const fetchGlobalStats = async () => {
+    try {
+      const { data: statsData } = await supabase.rpc('get_dashboard_stats', { target_user_id: user?.id });
+
+      // Fetch recent 5 for the list
+      const { data: recent } = await supabase
         .from('receipts')
         .select('total_amount, customer_name, created_at, receipt_number')
         .eq('user_id', user?.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      if (receipts) {
-        setAllReceipts(receipts);
-        const total = receipts.reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
-        const uniqueCustomers = new Set(receipts.map(r => r.customer_name)).size;
-        setStats({ totalSales: total, count: receipts.length, customers: uniqueCustomers });
-        setRecentReceipts([...receipts].reverse().slice(0, 5));
+      if (statsData) {
+        setStats(prev => ({
+            ...prev,
+            totalSales: statsData.total_revenue || 0,
+            count: statsData.total_receipts || 0
+        }));
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsFetching(false);
-    }
+      if (recent) setRecentReceipts(recent);
+    } catch (err) { console.error(err); }
   };
 
-  // Memoized Chart Data Processing
+  // 3. Fetch Chart Data (Specific Year Only)
+  // Prevents downloading 5 years of data when you only need 2026
+  const fetchYearlyData = async (year: number) => {
+    setIsFetching(true);
+    try {
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+
+      const { data } = await supabase
+        .from('receipts')
+        .select('total_amount, created_at, customer_name')
+        .eq('user_id', user?.id)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at', { ascending: true });
+
+      if (data) {
+        setYearReceipts(data);
+        // Calculate unique customers for THIS year
+        const unique = new Set(data.map(r => r.customer_name)).size;
+        setStats(prev => ({ ...prev, customers: unique }));
+      }
+    } catch (err) { console.error(err); } 
+    finally { setIsFetching(false); }
+  };
+
+  // Memoized Chart Calculation
   const chartData = useMemo(() => {
     if (selectedMonth === "all") {
-      // Monthly View for the selected year
+      // Monthly View
       return months.map((m, index) => {
-        const total = allReceipts
-          .filter(r => {
-            const d = new Date(r.created_at);
-            return d.getFullYear() === selectedYear && d.getMonth() === index;
-          })
+        const total = yearReceipts
+          .filter(r => new Date(r.created_at).getMonth() === index)
           .reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
         return { name: m, total };
       });
     } else {
-      // Daily View for the specific month
+      // Daily View
       const monthIndex = months.indexOf(selectedMonth);
       const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
-      
+
       return Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
-        const total = allReceipts
+        const total = yearReceipts
           .filter(r => {
             const d = new Date(r.created_at);
-            return d.getFullYear() === selectedYear && 
-                   d.getMonth() === monthIndex && 
-                   d.getDate() === day;
+            return d.getMonth() === monthIndex && d.getDate() === day;
           })
           .reduce((acc, r) => acc + (Number(r.total_amount) || 0), 0);
         return { name: `${day}`, total };
       });
     }
-  }, [allReceipts, selectedYear, selectedMonth]);
+  }, [yearReceipts, selectedYear, selectedMonth]);
 
-  if (loading || isFetching) return (
+  if (loading) return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
       <Loader2 className="animate-spin text-zinc-900" size={32} />
     </div>
@@ -110,7 +143,8 @@ export default function Dashboard() {
     <div className="min-h-screen bg-zinc-50 pb-20 font-sans">
       <Head><title>Dashboard | MifimnPay</title></Head>
       <DashboardNavbar />
-      
+      <ProfileAlert />
+
       <main className="max-w-6xl mx-auto px-6 py-10 space-y-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -118,13 +152,13 @@ export default function Dashboard() {
             <p className="text-zinc-500 font-medium">Performance tracking for {businessName}.</p>
           </motion.div>
 
-          {/* Filters Section */}
+          {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 transition-all cursor-pointer shadow-sm"
+                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 cursor-pointer shadow-sm"
               >
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -135,7 +169,7 @@ export default function Dashboard() {
               <select 
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 transition-all cursor-pointer shadow-sm"
+                className="appearance-none bg-white border border-zinc-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900/5 cursor-pointer shadow-sm"
               >
                 <option value="all">Full Year (Monthly)</option>
                 {months.map(m => <option key={m} value={m}>{m}</option>)}
@@ -149,7 +183,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatsCard title="Total Revenue" value={`₦${stats.totalSales.toLocaleString()}`} icon={<TrendingUp size={20} />} color="text-green-600" />
           <StatsCard title="Receipts Issued" value={stats.count.toString()} icon={<FileText size={20} />} color="text-blue-600" />
-          <StatsCard title="Active Customers" value={stats.customers.toString()} icon={<Users size={20} />} color="text-purple-600" />
+          <StatsCard title="Active Customers (Year)" value={stats.customers.toString()} icon={<Users size={20} />} color="text-purple-600" />
         </div>
 
         {/* Sales Chart Analysis */}
@@ -163,8 +197,9 @@ export default function Dashboard() {
                 {selectedMonth === "all" ? "Monthly Cumulative" : "Daily Sales Tracking"}
               </p>
             </div>
+            {isFetching && <Loader2 className="animate-spin text-zinc-400" size={20} />}
           </div>
-          
+
           <div className="h-[320px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -181,7 +216,7 @@ export default function Dashboard() {
                   tickLine={false} 
                   tick={{fontSize: 10, fill: '#9ca3af', fontWeight: 600}} 
                   dy={10} 
-                  interval={selectedMonth === "all" ? 0 : 2}
+                  interval={selectedMonth === "all" ? 0 : 4} // Adjust interval for daily view
                 />
                 <YAxis hide />
                 <Tooltip 
@@ -195,6 +230,7 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Recent Activity & Action */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-6">
             <h3 className="font-bold text-zinc-900 text-lg">Recent Activity</h3>
@@ -204,13 +240,15 @@ export default function Dashboard() {
                   {recentReceipts.map((r, i) => (
                     <div key={i} className="p-5 flex items-center justify-between hover:bg-zinc-50 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-600 font-black text-lg uppercase">{r.customer_name[0]}</div>
+                        <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-600 font-black text-lg uppercase">
+                            {r.customer_name ? r.customer_name[0] : 'W'}
+                        </div>
                         <div>
-                          <p className="font-bold text-zinc-900">{r.customer_name}</p>
+                          <p className="font-bold text-zinc-900">{r.customer_name || 'Walk-in'}</p>
                           <p className="text-xs text-zinc-400 font-bold tracking-tight">#{r.receipt_number} • {new Date(r.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <p className="font-black text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</p>
+                      <span className="font-black text-zinc-900">₦{Number(r.total_amount).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

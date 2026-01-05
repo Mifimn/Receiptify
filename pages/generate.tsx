@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { 
   Download, Share2, Plus, Trash2, ArrowLeft, Loader2, 
-  Palette, Settings, Lock, AlertTriangle 
+  Settings, Lock, AlertTriangle, User 
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ReceiptData, ReceiptItem, ReceiptSettings } from '../types';
@@ -12,27 +12,39 @@ import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient'; 
 import { useAuth } from '../lib/AuthContext'; 
 
+// --- HELPER: Strict Math Safety ---
+// Prevents "10" + "20" = "1020" errors
+const safeFloat = (value: any): number => {
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+};
+
 export default function Generator() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); 
   const receiptRef = useRef<HTMLDivElement>(null);
-  
+
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
+  // --- State for Customer Suggestions ---
+  const [pastCustomers, setPastCustomers] = useState<string[]>([]);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [data, setData] = useState<ReceiptData>({
     receiptNumber: '001',
     date: '...',
     customerName: '',
     currency: '₦',
-    items: [{ id: '1', name: '', qty: 1, price: '' as any }], 
+    items: [{ id: '1', name: '', qty: 1, price: '' }], // Removed 'as any', handled by safeFloat
     paymentMethod: 'Transfer',
     status: 'Paid',
-    discount: '' as any,
-    shipping: '' as any,
+    discount: '',
+    shipping: '',
     businessName: 'My Business',
     businessPhone: '',
     tagline: '',
@@ -53,8 +65,7 @@ export default function Generator() {
       if (user) {
         try {
           const { data: nextNum } = await supabase.rpc('get_next_receipt_number', { target_user_id: user.id });
-          
-          // Updated selection to include tagline and footer_message
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('business_name, business_phone, currency, logo_url, tagline, footer_message')
@@ -70,10 +81,27 @@ export default function Generator() {
               businessPhone: profile.business_phone || '',
               currency: profile.currency || '₦',
               logoUrl: profile.logo_url,
-              tagline: profile.tagline || '', // Map tagline
-              footerMessage: profile.footer_message || '' // Map footer message
+              tagline: profile.tagline || '', 
+              footerMessage: profile.footer_message || '' 
             }));
           }
+
+          // Fetch Past Customers
+          const { data: receipts } = await supabase
+            .from('receipts')
+            .select('customer_name')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (receipts) {
+            const uniqueNames = Array.from(new Set(
+              receipts
+                .map(r => r.customer_name)
+                .filter(name => name && name.trim() !== '' && name !== 'Walk-in Customer')
+            ));
+            setPastCustomers(uniqueNames);
+          }
+
         } catch (err) { console.error(err); }
       } else {
         setData(prev => ({ ...prev, date: today }));
@@ -82,38 +110,77 @@ export default function Generator() {
     if (!authLoading) initializeData();
   }, [user, authLoading]);
 
+  // --- PERFORMANCE: Debounced Search ---
+  // Waits 300ms after typing stops before filtering (Fixes lag on slow phones)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (data.customerName.length > 0) {
+        const matches = pastCustomers.filter(name => 
+          name.toLowerCase().includes(data.customerName.toLowerCase())
+        );
+        setFilteredSuggestions(matches.slice(0, 5));
+        if (matches.length > 0) setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [data.customerName, pastCustomers]);
+
+  const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Just update state, let the useEffect handle the heavy filtering
+    setData({ ...data, customerName: e.target.value });
+  };
+
+  const selectCustomer = (name: string) => {
+    setData({ ...data, customerName: name });
+    setShowSuggestions(false);
+  };
+
+  // --- SECURITY: Strict Calculation Logic ---
   const saveToHistory = async () => {
     if (!user) return; 
-    const subtotal = data.items.reduce((acc, i) => acc + ((Number(i.price)||0) * (Number(i.qty)||0)), 0);
-    const numericTotal = subtotal + (Number(data.shipping) || 0) - (Number(data.discount) || 0);
+
+    // Use safeFloat to ensure these are numbers
+    const subtotal = data.items.reduce((acc, i) => acc + (safeFloat(i.price) * safeFloat(i.qty)), 0);
+    const shipping = safeFloat(data.shipping);
+    const discount = safeFloat(data.discount);
+
+    // Explicit math
+    const numericTotal = subtotal + shipping - discount;
 
     const { error } = await supabase.from('receipts').insert([{
       user_id: user.id,
       receipt_number: data.receiptNumber,
       customer_name: data.customerName || 'Walk-in Customer',
       total_amount: numericTotal,
-      shipping_fee: Number(data.shipping) || 0,
-      discount_amount: Number(data.discount) || 0,
+      shipping_fee: shipping,
+      discount_amount: discount,
       status: data.status,
       payment_method: data.paymentMethod,
-      items: data.items,
+      items: data.items.map(i => ({
+        ...i,
+        qty: safeFloat(i.qty),
+        price: safeFloat(i.price)
+      })),
       created_at: new Date().toISOString()
     }]);
     if (error) throw error;
   };
 
   const handleItemChange = (id: string, field: keyof ReceiptItem, value: any) => {
-    const finalValue = (field === 'price' || field === 'qty') && value === '' ? '' : value;
+    // Allow empty string for UI editing, but don't cast to 'any' globally
     setData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.id === id ? { ...item, [field]: finalValue } : item)
+      items: prev.items.map(item => item.id === id ? { ...item, [field]: value } : item)
     }));
   };
 
   const addItem = () => {
     setData(prev => ({
       ...prev,
-      items: [...prev.items, { id: Date.now().toString(), name: '', qty: 1, price: '' as any }]
+      items: [...prev.items, { id: Date.now().toString(), name: '', qty: 1, price: '' }]
     }));
   };
 
@@ -230,7 +297,37 @@ export default function Generator() {
           <div className="max-w-2xl mx-auto space-y-6 pb-24 md:pb-10">
             <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
               <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-50 pb-2"><Settings size={16} className="text-zinc-400" /> Details</h3>
-              <input value={data.customerName} onChange={(e) => setData({...data, customerName: e.target.value})} className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-zinc-50 focus:bg-white transition-all text-base" placeholder="Customer Name" />
+
+              <div className="relative">
+                <input 
+                  value={data.customerName} 
+                  onChange={handleCustomerNameChange}
+                  onFocus={() => { if(data.customerName) setShowSuggestions(true) }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  className="w-full h-12 px-4 border-2 border-zinc-100 rounded-xl focus:border-zinc-900 outline-none font-medium bg-zinc-50 focus:bg-white transition-all text-base" 
+                  placeholder="Customer Name"
+                  autoComplete="off" 
+                />
+
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                    <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-100">
+                      Previous Customers
+                    </div>
+                    {filteredSuggestions.map((name, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectCustomer(name)}
+                        className="w-full text-left px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition-colors flex items-center gap-2"
+                      >
+                        <User size={14} className="text-zinc-400" />
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
                   <label className="text-[10px] font-bold text-zinc-400 ml-1 mb-1">RECEIPT NO.</label>
