@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { 
   Download, Share2, Plus, Trash2, ArrowLeft, Loader2, 
-  Settings, Lock, AlertTriangle, User 
+  Palette, Settings, Lock, AlertTriangle, User 
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { ReceiptData, ReceiptItem, ReceiptSettings } from '../types';
@@ -12,25 +12,18 @@ import Link from 'next/link';
 import { supabase } from '../lib/supabaseClient'; 
 import { useAuth } from '../lib/AuthContext'; 
 
-// --- HELPER: Strict Math Safety ---
-// Prevents "10" + "20" = "1020" errors
-const safeFloat = (value: any): number => {
-  const num = parseFloat(value);
-  return isNaN(num) ? 0 : num;
-};
-
 export default function Generator() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); 
   const receiptRef = useRef<HTMLDivElement>(null);
-
+  
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  // --- State for Customer Suggestions ---
+  // --- Customer Suggestions State ---
   const [pastCustomers, setPastCustomers] = useState<string[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -40,11 +33,11 @@ export default function Generator() {
     date: '...',
     customerName: '',
     currency: '₦',
-    items: [{ id: '1', name: '', qty: 1, price: '' }], // Removed 'as any', handled by safeFloat
+    items: [{ id: '1', name: '', qty: 1, price: '' as any }], 
     paymentMethod: 'Transfer',
     status: 'Paid',
-    discount: '',
-    shipping: '',
+    discount: '' as any,
+    shipping: '' as any,
     businessName: 'My Business',
     businessPhone: '',
     tagline: '',
@@ -65,7 +58,7 @@ export default function Generator() {
       if (user) {
         try {
           const { data: nextNum } = await supabase.rpc('get_next_receipt_number', { target_user_id: user.id });
-
+          
           const { data: profile } = await supabase
             .from('profiles')
             .select('business_name, business_phone, currency, logo_url, tagline, footer_message')
@@ -110,8 +103,7 @@ export default function Generator() {
     if (!authLoading) initializeData();
   }, [user, authLoading]);
 
-  // --- PERFORMANCE: Debounced Search ---
-  // Waits 300ms after typing stops before filtering (Fixes lag on slow phones)
+  // --- NEW: Debounced Suggestion Logic (500ms Timer) ---
   useEffect(() => {
     const timer = setTimeout(() => {
       if (data.customerName.length > 0) {
@@ -119,17 +111,16 @@ export default function Generator() {
           name.toLowerCase().includes(data.customerName.toLowerCase())
         );
         setFilteredSuggestions(matches.slice(0, 5));
-        if (matches.length > 0) setShowSuggestions(true);
+        setShowSuggestions(true);
       } else {
         setShowSuggestions(false);
       }
-    }, 300); // 300ms delay
+    }, 500); // 500ms delay
 
     return () => clearTimeout(timer);
   }, [data.customerName, pastCustomers]);
 
   const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Just update state, let the useEffect handle the heavy filtering
     setData({ ...data, customerName: e.target.value });
   };
 
@@ -138,49 +129,38 @@ export default function Generator() {
     setShowSuggestions(false);
   };
 
-  // --- SECURITY: Strict Calculation Logic ---
   const saveToHistory = async () => {
     if (!user) return; 
-
-    // Use safeFloat to ensure these are numbers
-    const subtotal = data.items.reduce((acc, i) => acc + (safeFloat(i.price) * safeFloat(i.qty)), 0);
-    const shipping = safeFloat(data.shipping);
-    const discount = safeFloat(data.discount);
-
-    // Explicit math
-    const numericTotal = subtotal + shipping - discount;
+    const subtotal = data.items.reduce((acc, i) => acc + ((Number(i.price)||0) * (Number(i.qty)||0)), 0);
+    const numericTotal = subtotal + (Number(data.shipping) || 0) - (Number(data.discount) || 0);
 
     const { error } = await supabase.from('receipts').insert([{
       user_id: user.id,
       receipt_number: data.receiptNumber,
       customer_name: data.customerName || 'Walk-in Customer',
       total_amount: numericTotal,
-      shipping_fee: shipping,
-      discount_amount: discount,
+      shipping_fee: Number(data.shipping) || 0,
+      discount_amount: Number(data.discount) || 0,
       status: data.status,
       payment_method: data.paymentMethod,
-      items: data.items.map(i => ({
-        ...i,
-        qty: safeFloat(i.qty),
-        price: safeFloat(i.price)
-      })),
+      items: data.items,
       created_at: new Date().toISOString()
     }]);
     if (error) throw error;
   };
 
   const handleItemChange = (id: string, field: keyof ReceiptItem, value: any) => {
-    // Allow empty string for UI editing, but don't cast to 'any' globally
+    const finalValue = (field === 'price' || field === 'qty') && value === '' ? '' : value;
     setData(prev => ({
       ...prev,
-      items: prev.items.map(item => item.id === id ? { ...item, [field]: value } : item)
+      items: prev.items.map(item => item.id === id ? { ...item, [field]: finalValue } : item)
     }));
   };
 
   const addItem = () => {
     setData(prev => ({
       ...prev,
-      items: [...prev.items, { id: Date.now().toString(), name: '', qty: 1, price: '' }]
+      items: [...prev.items, { id: Date.now().toString(), name: '', qty: 1, price: '' as any }]
     }));
   };
 
@@ -265,7 +245,7 @@ export default function Generator() {
 
       {showConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95">
             <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={24} /></div>
             <h3 className="text-lg font-bold text-zinc-900 mb-2">Check details carefully</h3>
             <p className="text-sm text-zinc-500 mb-6">Are you sure the details are correct? This will be saved to your history.</p>
@@ -297,7 +277,7 @@ export default function Generator() {
           <div className="max-w-2xl mx-auto space-y-6 pb-24 md:pb-10">
             <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
               <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-50 pb-2"><Settings size={16} className="text-zinc-400" /> Details</h3>
-
+              
               <div className="relative">
                 <input 
                   value={data.customerName} 
@@ -308,9 +288,9 @@ export default function Generator() {
                   placeholder="Customer Name"
                   autoComplete="off" 
                 />
-
+                
                 {showSuggestions && filteredSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-100">
                       Previous Customers
                     </div>
@@ -392,6 +372,7 @@ export default function Generator() {
           </div>
         </div>
 
+        {/* Desktop Preview Column */}
         <div className={`flex-1 h-full bg-zinc-200/50 flex flex-col relative ${activeTab === 'edit' ? 'hidden md:flex' : 'flex'}`}>
           <div className="bg-white/80 backdrop-blur-md border-b border-zinc-200 p-3 flex justify-between items-center z-10 shadow-sm shrink-0">
              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
@@ -411,6 +392,7 @@ export default function Generator() {
           </div>
         </div>
 
+        {/* Mobile Tab Switcher */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex z-40 pb-safe shadow-lg">
           <button onClick={() => setActiveTab('edit')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'edit' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-400'}`}>Edit Details</button>
           <div className="w-[1px] bg-zinc-200 h-6 self-center"></div>
