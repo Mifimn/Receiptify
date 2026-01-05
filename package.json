@@ -1,14 +1,16 @@
 {
-  "name": "my-app",
+  "name": "mifimnpay",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000 --hostname 0.0.0.0",
     "build": "next build",
+    "postbuild": "next-sitemap",
     "start": "next start --port 3000 --hostname 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/third-parties": "^16.1.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
     "clsx": "^2.1.1",
@@ -17,6 +19,7 @@
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
     "next": "^15.2.3",
+    "next-sitemap": "^4.2.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.6.0",
