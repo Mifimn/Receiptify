@@ -16,17 +16,18 @@ export default function Generator() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(); 
   const receiptRef = useRef<HTMLDivElement>(null);
-  
+
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  // --- Customer Suggestions State ---
+  // --- NEW: State for Customer Suggestions ---
   const [pastCustomers, setPastCustomers] = useState<string[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // -------------------------------------------
 
   const [data, setData] = useState<ReceiptData>({
     receiptNumber: '001',
@@ -58,7 +59,7 @@ export default function Generator() {
       if (user) {
         try {
           const { data: nextNum } = await supabase.rpc('get_next_receipt_number', { target_user_id: user.id });
-          
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('business_name, business_phone, currency, logo_url, tagline, footer_message')
@@ -79,7 +80,7 @@ export default function Generator() {
             }));
           }
 
-          // Fetch Past Customers
+          // --- NEW: Fetch Past Customers ---
           const { data: receipts } = await supabase
             .from('receipts')
             .select('customer_name')
@@ -87,6 +88,7 @@ export default function Generator() {
             .order('created_at', { ascending: false });
 
           if (receipts) {
+            // Filter unique names, remove blanks and "Walk-in"
             const uniqueNames = Array.from(new Set(
               receipts
                 .map(r => r.customer_name)
@@ -94,6 +96,7 @@ export default function Generator() {
             ));
             setPastCustomers(uniqueNames);
           }
+          // ---------------------------------
 
         } catch (err) { console.error(err); }
       } else {
@@ -103,31 +106,27 @@ export default function Generator() {
     if (!authLoading) initializeData();
   }, [user, authLoading]);
 
-  // --- NEW: Debounced Suggestion Logic (500ms Timer) ---
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (data.customerName.length > 0) {
-        const matches = pastCustomers.filter(name => 
-          name.toLowerCase().includes(data.customerName.toLowerCase())
-        );
-        setFilteredSuggestions(matches.slice(0, 5));
-        setShowSuggestions(true);
-      } else {
-        setShowSuggestions(false);
-      }
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(timer);
-  }, [data.customerName, pastCustomers]);
-
+  // --- NEW: Suggestion Handlers ---
   const handleCustomerNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setData({ ...data, customerName: e.target.value });
+    const value = e.target.value;
+    setData({ ...data, customerName: value });
+
+    if (value.length > 0) {
+      const matches = pastCustomers.filter(name => 
+        name.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredSuggestions(matches.slice(0, 5)); // Show max 5 suggestions
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
   };
 
   const selectCustomer = (name: string) => {
     setData({ ...data, customerName: name });
     setShowSuggestions(false);
   };
+  // --------------------------------
 
   const saveToHistory = async () => {
     if (!user) return; 
@@ -245,7 +244,7 @@ export default function Generator() {
 
       {showConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
             <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={24} /></div>
             <h3 className="text-lg font-bold text-zinc-900 mb-2">Check details carefully</h3>
             <p className="text-sm text-zinc-500 mb-6">Are you sure the details are correct? This will be saved to your history.</p>
@@ -277,7 +276,8 @@ export default function Generator() {
           <div className="max-w-2xl mx-auto space-y-6 pb-24 md:pb-10">
             <section className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
               <h3 className="font-bold text-xs text-zinc-500 uppercase tracking-wider flex items-center gap-2 border-b border-zinc-50 pb-2"><Settings size={16} className="text-zinc-400" /> Details</h3>
-              
+
+              {/* --- MODIFIED: Customer Input with Suggestions --- */}
               <div className="relative">
                 <input 
                   value={data.customerName} 
@@ -288,9 +288,9 @@ export default function Generator() {
                   placeholder="Customer Name"
                   autoComplete="off" 
                 />
-                
+
                 {showSuggestions && filteredSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden">
                     <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-100">
                       Previous Customers
                     </div>
@@ -307,6 +307,7 @@ export default function Generator() {
                   </div>
                 )}
               </div>
+              {/* ----------------------------------------------- */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col">
@@ -372,7 +373,6 @@ export default function Generator() {
           </div>
         </div>
 
-        {/* Desktop Preview Column */}
         <div className={`flex-1 h-full bg-zinc-200/50 flex flex-col relative ${activeTab === 'edit' ? 'hidden md:flex' : 'flex'}`}>
           <div className="bg-white/80 backdrop-blur-md border-b border-zinc-200 p-3 flex justify-between items-center z-10 shadow-sm shrink-0">
              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
@@ -392,7 +392,6 @@ export default function Generator() {
           </div>
         </div>
 
-        {/* Mobile Tab Switcher */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex z-40 pb-safe shadow-lg">
           <button onClick={() => setActiveTab('edit')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'edit' ? 'text-zinc-900 bg-zinc-50' : 'text-zinc-400'}`}>Edit Details</button>
           <div className="w-[1px] bg-zinc-200 h-6 self-center"></div>
