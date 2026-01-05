@@ -13,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         <title>MifimnPay | Professional Receipt Generator</title>
         <meta name="description" content="Generate authentic branded receipts instantly with MifimnPay." />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         
         {/* Google Search Console Verification Tag */}
         <meta name="google-site-verification" content="3LLBnYF_neMyal_kjtQyVOSE25JcDQBwnw40fWe_yEE" />
