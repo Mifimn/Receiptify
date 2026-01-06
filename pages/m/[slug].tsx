@@ -11,7 +11,6 @@ export default function PublicStore() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Define site URL for absolute image paths required by social scrapers
   const siteUrl = 'https://mifimnpay.vercel.app';
 
   useEffect(() => {
@@ -52,26 +51,25 @@ export default function PublicStore() {
   const logoLetter = (profile.business_name?.charAt(0) || 'B').toUpperCase();
   const currencySymbol = profile.currency?.split(' ')[0] || '₦';
   
-  // Dynamic SEO Data
   const pageTitle = `${profile.business_name} | Official Price List`;
   const pageDesc = profile.tagline || `View the live price list and products from ${profile.business_name} on MifimnPay.`;
+  // Fallback to absolute favicon URL if no logo exists
   const shareImage = profile.logo_url || `${siteUrl}/favicon.png`;
 
   return (
     <div className="min-h-screen bg-white font-sans text-zinc-900 relative overflow-hidden selection:bg-zinc-900 selection:text-white">
       <Head>
-        {/* Standard SEO */}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
 
-        {/* Essential Open Graph Tags for WhatsApp & Facebook */}
+        {/* Open Graph Tags for WhatsApp & Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${siteUrl}/m/${slug}`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content={shareImage} />
         <meta property="og:image:secure_url" content={shareImage} />
-        <meta property="og:image:type" content="image/png" />
+        {/* Removed og:image:type to allow automatic detection of JPG/PNG/WebP */}
         <meta property="og:image:width" content="400" />
         <meta property="og:image:height" content="400" />
 
@@ -82,7 +80,6 @@ export default function PublicStore() {
         <meta name="twitter:image" content={shareImage} />
       </Head>
       
-      {/* Background Logo Pattern with Increased Visibility (0.07 opacity) */}
       <div className="fixed inset-0 opacity-[0.07] pointer-events-none z-0 flex flex-wrap gap-12 p-6 rotate-[-15deg] scale-150 justify-center items-center">
         {[...Array(50)].map((_, i) => (
           <div key={i} className="w-10 h-10 flex items-center justify-center">
@@ -96,7 +93,6 @@ export default function PublicStore() {
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Minimal Header with Reduced Spacing */}
         <header className="pt-10 pb-6 px-6 border-b border-zinc-100 bg-white/70 backdrop-blur-xl sticky top-0 z-20">
           <div className="max-w-screen-md mx-auto text-center">
             {profile.logo_url && (
@@ -121,7 +117,6 @@ export default function PublicStore() {
           </div>
         </header>
 
-        {/* Product List Section */}
         <main className="flex-1 max-w-screen-md mx-auto w-full px-6 py-8">
           <div className="flex items-center justify-between border-b border-zinc-900 pb-2 mb-8">
             <div className="flex items-center gap-2">
