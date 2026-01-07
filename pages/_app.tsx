@@ -9,8 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
   const siteUrl = 'https://mifimnpay.vercel.app'; 
   const title = "MifimnPay | Professional Receipt Generator";
   const description = "Generate authentic branded receipts instantly with MifimnPay.";
-  // IMPORTANT: Ensure og-image.png is in your /public folder and under 300KB
-  const ogImage = `${siteUrl}/og-image.jpg`;
+  const ogImage = `${siteUrl}/og-image.png`;
 
   return (
     <AuthProvider>
@@ -22,14 +21,12 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="google-site-verification" content="3LLBnYF_neMyal_kjtQyVOSE25JcDQBwnw40fWe_yEE" />
         <link rel="icon" href="/favicon.png" />
 
-        {/* Open Graph / Facebook / WhatsApp */}
+        {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={siteUrl} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={ogImage} />
-        {/* Added secure_url for improved WhatsApp compatibility */}
-        <meta property="og:image:secure_url" content={ogImage} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
 
