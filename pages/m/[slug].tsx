@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { supabase } from '../../lib/supabaseClient';
-import { Loader2, Package, Globe, ShieldCheck } from 'lucide-react';
+import { Loader2, Package, ShieldCheck } from 'lucide-react';
 
 export default function PublicStore() {
   const router = useRouter();
@@ -37,48 +37,42 @@ export default function PublicStore() {
     }
   };
 
-  /**
-   * OPTIMIZATION LOGIC:
-   * This function ensures that if a user uploads a large image (e.g., 2MB), 
-   * we serve a compressed 300x300 version to WhatsApp/Social Media crawlers.
-   */
+  // Image Optimization for WhatsApp (300KB limit)
   const getOptimizedImage = (url: string) => {
     if (!url) return `${siteUrl}/favicon.png`;
-    
-    // If image is from Supabase, use on-the-fly transformation to shrink file size
     if (url.includes('supabase.co')) {
+      // Resizes to 300x300 and lowers quality to ensure it's under the size limit
       return `${url}?width=300&height=300&resize=contain&quality=70`;
     }
-    
     return url;
   };
 
-  // SEO & Social Preview Data
-  const pageTitle = profile ? `${profile.business_name} | Official Price List` : "MifimnPay Storefront";
-  const pageDesc = profile?.tagline || `View the live price list and products from ${profile?.business_name || 'this store'} on MifimnPay.`;
+  // Dynamic Metadata
+  const businessName = profile?.business_name || (slug ? String(slug).toUpperCase() : "MifimnPay");
+  const pageTitle = `${businessName} | Official Price List`;
+  
+  // Updated: Description now explicitly includes the business/slug name
+  const pageDesc = `View the official ${businessName} storefront on MifimnPay. Browse products and live rates.`;
   const shareImage = getOptimizedImage(profile?.logo_url);
 
   return (
     <div className="min-h-screen bg-white font-sans text-zinc-900 relative overflow-hidden">
-      {/* CRITICAL: The <Head> is rendered OUTSIDE of the loading check.
-          This ensures crawlers see the meta tags immediately.
-      */}
+      {/* Head rendered outside of loading to be visible to crawlers immediately */}
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
 
-        {/* Essential Open Graph Tags for WhatsApp & Facebook */}
+        {/* Open Graph / WhatsApp */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${siteUrl}/m/${slug}`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content={shareImage} />
         <meta property="og:image:secure_url" content={shareImage} />
-        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="300" />
         <meta property="og:image:height" content="300" />
 
-        {/* Twitter Tags - Using 'summary' for better square logo display */}
+        {/* Twitter */}
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
