@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { 
-  Search, Download, Plus, Calendar, Loader2, Eye, X, CheckCircle, Clock 
-} from 'lucide-react';
+import { Search, Download, Plus, Calendar, Loader2, Eye, X, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/AuthContext';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';
@@ -18,7 +16,7 @@ export default function History() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false); // Added only this
+  const [isUpdating, setIsUpdating] = useState(false);
   const downloadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,17 +38,11 @@ export default function History() {
     setLoading(false);
   };
 
-  // Only added this function for the status update
   const handleUpdateStatus = async (id: string) => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('receipts')
-        .update({ status: 'paid' })
-        .eq('id', id);
-
+      const { error } = await supabase.from('receipts').update({ status: 'paid' }).eq('id', id);
       if (error) throw error;
-
       setReceipts(receipts.map(r => r.id === id ? { ...r, status: 'paid' } : r));
       setSelectedReceipt({ ...selectedReceipt, status: 'paid' });
     } catch (err) {
@@ -69,11 +61,7 @@ export default function History() {
       link.href = dataUrl;
       link.download = `receipt-${selectedReceipt.receipt_number}.png`;
       link.click();
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
-      setIsDownloading(false); 
-    }
+    } catch (err) { console.error(err); } finally { setIsDownloading(false); }
   };
 
   const filteredReceipts = receipts.filter(r => 
@@ -92,13 +80,7 @@ export default function History() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-zinc-200 mb-6">
-          <input 
-            type="text" 
-            placeholder="Search customer or ID..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="w-full md:w-96 px-4 py-2 bg-zinc-50 border rounded-lg text-sm outline-none focus:border-zinc-900" 
-          />
+          <input type="text" placeholder="Search customer or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full md:w-96 px-4 py-2 bg-zinc-50 border rounded-lg text-sm outline-none focus:border-zinc-900" />
         </div>
 
         <div className="bg-white border rounded-xl overflow-hidden shadow-sm overflow-x-auto">
@@ -108,7 +90,7 @@ export default function History() {
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Status</th> {/* Added Status Column */}
+                <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -122,7 +104,8 @@ export default function History() {
                     <td className="px-6 py-4 font-mono text-xs font-bold text-zinc-500">{r.receipt_number}</td>
                     <td className="px-6 py-4 text-sm text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-bold text-zinc-900">{r.customer_name}</td>
-                    <td className="px-6 py-4"> {/* Added Status Badge here */}
+                    <td className="px-6 py-4">
+                      {/* FIXED COLORS: GREEN FOR PAID, AMBER FOR PENDING */}
                       <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md flex items-center gap-1 w-fit ${r.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                         {r.status === 'paid' ? <CheckCircle size={10}/> : <Clock size={10}/>} {r.status}
                       </span>
@@ -153,7 +136,6 @@ export default function History() {
                         <ReceiptPreview 
                             data={{
                                 ...selectedReceipt,
-                                status: selectedReceipt.status, // Ensures status is passed to preview
                                 customerName: selectedReceipt.customer_name,
                                 receiptNumber: selectedReceipt.receipt_number,
                                 currency: '₦',
@@ -172,26 +154,17 @@ export default function History() {
                         />
                     </div>
                 </div>
-                <div className="p-4 border-t flex gap-3 bg-white">
-                    {/* Only added this Mark as Paid button logic here */}
+                <div className="p-4 border-t flex flex-wrap gap-3 bg-white">
+                    {/* BUTTON TO MARK AS PAID */}
                     {selectedReceipt.status === 'pending' && (
-                      <button 
-                        onClick={() => handleUpdateStatus(selectedReceipt.id)}
-                        disabled={isUpdating}
-                        className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-700 transition-all"
-                      >
-                        {isUpdating ? <Loader2 className="animate-spin w-5 h-5" /> : "Mark as Paid"}
+                      <button onClick={() => handleUpdateStatus(selectedReceipt.id)} disabled={isUpdating} className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-green-700 transition-all">
+                        {isUpdating ? <Loader2 className="animate-spin w-5 h-5" /> : <CheckCircle size={18} />} Mark as Paid
                       </button>
                     )}
-                    
-                    <button 
-                        onClick={handleDownloadAgain} 
-                        disabled={isDownloading} 
-                        className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all"
-                    >
+                    <button onClick={handleDownloadAgain} disabled={isDownloading} className="flex-[2] py-3 bg-zinc-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all">
                         {isDownloading ? <Loader2 className="animate-spin w-5 h-5" /> : <Download size={18} />} Download Image
                     </button>
-                    <button onClick={() => setSelectedReceipt(null)} className="px-4 py-3 bg-zinc-100 font-bold rounded-xl transition-colors hover:bg-zinc-200">Close</button>
+                    <button onClick={() => setSelectedReceipt(null)} className="flex-1 py-3 bg-zinc-100 font-bold rounded-xl transition-colors hover:bg-zinc-200">Close</button>
                 </div>
             </div>
         </div>
