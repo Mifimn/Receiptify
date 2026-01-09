@@ -37,38 +37,47 @@ export default function PublicStore() {
     }
   };
 
-  // --- PREPARE DYNAMIC SEO DATA ---
-  // We define defaults so that the crawler sees SOMETHING even if the profile is still loading
+  // --- IMAGE OPTIMIZATION LOGIC ---
+  // WhatsApp prefers small, square images.
+  // If you are using Supabase Storage, you can append transformation parameters to the URL
+  // to resize the image automatically to 300x300 and reduce quality/size.
+  const getOptimizedImage = (url: string) => {
+    if (!url) return `${siteUrl}/favicon.png`;
+    // If using Supabase built-in optimization (requires Pro plan):
+    // return `${url}?width=300&height=300&resize=contain`; 
+    return url;
+  };
+
   const pageTitle = profile ? `${profile.business_name} | Official Price List` : "MifimnPay Storefront";
-  const pageDesc = profile?.tagline || (profile ? `View the live price list and products from ${profile.business_name} on MifimnPay.` : "Generate professional receipts and manage your business with MifimnPay.");
-  const shareImage = profile?.logo_url || `${siteUrl}/favicon.png`;
+  const pageDesc = profile?.tagline || `View products from ${profile?.business_name || 'this store'} on MifimnPay.`;
+  const shareImage = getOptimizedImage(profile?.logo_url);
 
   return (
-    <div className="min-h-screen bg-white font-sans text-zinc-900 relative overflow-hidden selection:bg-zinc-900 selection:text-white">
+    <div className="min-h-screen bg-white font-sans text-zinc-900 relative overflow-hidden">
+      {/* CRITICAL FIX: The <Head> MUST be outside the {loading} check. 
+          This ensures the WhatsApp crawler sees the image even while the page is "loading".
+      */}
       <Head>
-        {/* Standard SEO */}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
 
-        {/* Essential Open Graph Tags for WhatsApp & Facebook */}
+        {/* Open Graph / WhatsApp */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${siteUrl}/m/${slug}`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content={shareImage} />
         <meta property="og:image:secure_url" content={shareImage} />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:width" content="400" />
-        <meta property="og:image:height" content="400" />
+        <meta property="og:image:width" content="300" />
+        <meta property="og:image:height" content="300" />
 
-        {/* Twitter Tags */}
+        {/* Twitter */}
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
         <meta name="twitter:image" content={shareImage} />
       </Head>
 
-      {/* --- RENDER LOGIC --- */}
       {loading ? (
         <div className="h-screen flex items-center justify-center bg-white">
           <Loader2 className="animate-spin text-zinc-900" size={24} />
