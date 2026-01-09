@@ -37,32 +37,29 @@ export default function PublicStore() {
     }
   };
 
-  // Image Optimization for WhatsApp (300KB limit)
   const getOptimizedImage = (url: string) => {
     if (!url) return `${siteUrl}/favicon.png`;
     if (url.includes('supabase.co')) {
-      // Resizes to 300x300 and lowers quality to ensure it's under the size limit
       return `${url}?width=300&height=300&resize=contain&quality=70`;
     }
     return url;
   };
 
-  // Dynamic Metadata
-  const businessName = profile?.business_name || (slug ? String(slug).toUpperCase() : "MifimnPay");
-  const pageTitle = `${businessName} | Official Price List`;
-  
-  // Updated: Description now explicitly includes the business/slug name
-  const pageDesc = `View the official ${businessName} storefront on MifimnPay. Browse products and live rates.`;
+  // --- DYNAMIC SEO LOGIC ---
+  // If profile is not yet loaded, we use the slug from the URL to show the name immediately
+  const displayName = profile?.business_name || (slug ? String(slug).replace(/-/g, ' ').toUpperCase() : "Storefront");
+  const pageTitle = `${displayName} | Official Price List`;
+  const pageDesc = `View the live price list and products from ${displayName} on MifimnPay.`;
   const shareImage = getOptimizedImage(profile?.logo_url);
 
   return (
     <div className="min-h-screen bg-white font-sans text-zinc-900 relative overflow-hidden">
-      {/* Head rendered outside of loading to be visible to crawlers immediately */}
+      {/* Head rendered outside of loading to ensure social media crawlers see the slug name */}
       <Head>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
 
-        {/* Open Graph / WhatsApp */}
+        {/* Open Graph / WhatsApp / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${siteUrl}/m/${slug}`} />
         <meta property="og:title" content={pageTitle} />
