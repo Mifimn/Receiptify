@@ -1,8 +1,8 @@
-# Receiptify 🧾
+# MifimnPay 🧾
 
 **The Professional Receipt Generator for Small Businesses.**
 
-Receiptify is a modern, mobile-first web application built with **Next.js** and **TypeScript**. It helps small business owners, logistics companies, and freelancers generate authentic, professional payment receipts (styled like OPay/Bank transfer receipts) instantly.
+MifimnPay is a modern, mobile-first web application built with **Next.js** and **TypeScript**. It helps small business owners, logistics companies, and freelancers generate authentic, professional payment receipts (styled like OPay/Bank transfer receipts) instantly.
 
 ![Project Banner](public/og-image.png)
 *(Note: Replace this with a screenshot of your landing page or generator)*
@@ -52,5 +52,5 @@ Follow these steps to run the project locally.
 
 1. **Clone the repository**
    ```bash
-   git clone [https://github.com/yourusername/receiptify.git](https://github.com/yourusername/receiptify.git)
-   cd receiptify
+   git clone [https://github.com/yourusername/MifimnPay.git](https://github.com/yourusername/MifimnPay.git)
+   cd MifimnPay
