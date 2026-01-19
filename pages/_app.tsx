@@ -8,7 +8,7 @@ import InstallPrompt from '../components/PWA/InstallPrompt';
 import { GoogleAnalytics } from '@next/third-parties/google';
 
 export default function App({ Component, pageProps }: AppProps) {
-  const siteUrl = 'https://mifimnpay.vercel.app'; 
+  const siteUrl = 'https://mifimnpay.com.ng'; 
   const title = "MifimnPay | Professional Receipt Generator";
   const description = "Generate authentic branded receipts instantly with MifimnPay.";
   const shareImage = `${siteUrl}/favicon.png`;
