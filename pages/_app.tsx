@@ -8,10 +8,13 @@ import InstallPrompt from '../components/PWA/InstallPrompt';
 import { GoogleAnalytics } from '@next/third-parties/google';
 
 export default function App({ Component, pageProps }: AppProps) {
+  // Use the new production domain
   const siteUrl = 'https://mifimnpay.com.ng'; 
   const title = "MifimnPay | Professional Receipt Generator";
   const description = "Generate authentic branded receipts instantly with MifimnPay.";
-  const shareImage = `${siteUrl}/favicon.png`;
+  
+  // Use a larger image for social sharing to fix WhatsApp/Facebook previews
+  const shareImage = `${siteUrl}/og-image.png`;
 
   return (
     <AuthProvider>
@@ -21,18 +24,21 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="description" content={description} key="desc" />
 
         {/* --- Open Graph / WhatsApp / Facebook --- */}
+        {/* Added a default app_id to help with social crawler verification */}
+        <meta property="fb:app_id" content="966242223397117" />
         <meta property="og:type" content="website" key="ogtype" />
         <meta property="og:url" content={siteUrl} key="ogurl" />
         <meta property="og:title" content={title} key="ogtitle" />
         <meta property="og:description" content={description} key="ogdesc" />
         <meta property="og:image" content={shareImage} key="ogimage" />
         <meta property="og:image:secure_url" content={shareImage} key="ogimagesecure" />
-        <meta property="og:image:width" content="512" key="ogwidth" />
-        <meta property="og:image:height" content="512" key="ogheight" />
+        {/* Updated dimensions to standard social preview sizes */}
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:image:type" content="image/png" key="ogimgtype" />
 
         {/* --- Twitter --- */}
-        <meta name="twitter:card" content="summary" key="twcard" />
+        <meta name="twitter:card" content="summary_large_image" key="twcard" />
         <meta name="twitter:title" content={title} key="twtitle" />
         <meta name="twitter:description" content={description} key="twdesc" />
         <meta name="twitter:image" content={shareImage} key="twimage" />
