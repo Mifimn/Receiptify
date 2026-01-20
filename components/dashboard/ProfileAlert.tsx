@@ -12,8 +12,7 @@ export default function ProfileAlert() {
   const [missingInfo, setMissingInfo] = useState<string[]>([]);
 
   useEffect(() => {
-    // CONSTRAINT 1: Only apply to the dashboard page
-    // CONSTRAINT 2: User must be logged in
+    // Only apply to the dashboard page
     if (user && router.pathname === '/dashboard') {
       
       const checkProfile = async () => {
@@ -32,7 +31,7 @@ export default function ProfileAlert() {
         if (missing.length > 0) {
           setMissingInfo(missing);
           
-          // CONSTRAINT 3: Wait 2 seconds before displaying
+          // Wait 2 seconds before displaying on the dashboard
           const timer = setTimeout(() => {
             setIsVisible(true);
           }, 2000);
@@ -52,42 +51,55 @@ export default function ProfileAlert() {
   return (
     <AnimatePresence>
       <motion.div 
-        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[340px]"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="fixed top-20 left-0 right-0 z-[100] px-4 flex justify-center pointer-events-none"
       >
-        <div className="bg-zinc-950 text-white rounded-2xl p-4 shadow-2xl border border-zinc-800 flex items-center gap-4">
-          {/* Compact Icon */}
-          <div className="flex-shrink-0 w-10 h-10 bg-orange-500/10 text-orange-500 rounded-xl flex items-center justify-center">
-            <AlertCircle size={20} />
+        <div className="pointer-events-auto w-full max-w-[450px] bg-white border border-orange-100 shadow-xl rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-3 p-3 md:p-4">
+            {/* Minimalist Icon Section */}
+            <div className="flex-shrink-0 w-10 h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center">
+              <AlertCircle size={20} />
+            </div>
+
+            {/* Content Section */}
+            <div className="flex-grow min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-orange-600">
+                  Profile Incomplete
+                </span>
+              </div>
+              <p className="text-zinc-500 text-[11px] font-medium leading-tight">
+                Upload your <span className="text-zinc-900 font-bold">{missingInfo.join(', ')}</span> to look professional.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => router.push('/settings')}
+                className="h-9 px-4 bg-zinc-900 text-white rounded-xl text-[11px] font-bold hover:bg-zinc-800 transition-all flex items-center gap-1.5 whitespace-nowrap"
+              >
+                Fix <ArrowRight size={14} />
+              </button>
+              
+              <button 
+                onClick={() => setIsVisible(false)}
+                className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-50 rounded-xl transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
-
-          {/* Mini Content */}
-          <div className="flex-grow min-w-0">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-orange-500 mb-0.5">
-              Complete Profile
-            </h3>
-            <p className="text-zinc-400 text-[10px] font-medium truncate">
-              Missing: {missingInfo.join(', ')}
-            </p>
+          
+          {/* Subtle progress indicator at the bottom */}
+          <div className="h-1 w-full bg-zinc-50">
+            <div 
+              className="h-full bg-orange-500 transition-all duration-500" 
+              style={{ width: `${((4 - missingInfo.length) / 4) * 100}%` }}
+            />
           </div>
-
-          {/* Compact Action Button */}
-          <button 
-            onClick={() => router.push('/settings')}
-            className="flex-shrink-0 w-8 h-8 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex items-center justify-center transition-colors group"
-          >
-            <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-          </button>
-
-          {/* Close Button */}
-          <button 
-            onClick={() => setIsVisible(false)}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-zinc-800 border border-zinc-700 rounded-full flex items-center justify-center text-zinc-400 hover:text-white"
-          >
-            <X size={12} />
-          </button>
         </div>
       </motion.div>
     </AnimatePresence>
