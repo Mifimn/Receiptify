@@ -82,7 +82,7 @@ export default function Hero() {
           >
             <div className="flex flex-col gap-1">
               <Receipt size={20} className="text-zinc-900" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">PDF Receipts</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Image Receipts</span>
             </div>
             <div className="flex flex-col gap-1">
               <BarChart3 size={20} className="text-zinc-900" />
