@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-// Replaced Bell with Plus
 import { Plus, User, LayoutGrid, History, Settings, LogOut, Menu, X, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
@@ -44,7 +43,6 @@ export default function DashboardNavbar() {
             <span className="font-bold text-zinc-900 text-lg hidden md:block tracking-tight">MifimnPay</span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1 bg-zinc-100 p-1 rounded-lg">
             <NavLink href="/dashboard" icon={<LayoutGrid size={16} />} label="Overview" active={isActive('/dashboard')} />
             <NavLink href="/history" icon={<History size={16} />} label="History" active={isActive('/history')} />
@@ -54,17 +52,16 @@ export default function DashboardNavbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* REFINED PLUS ICON: Small, Circular, and Eye-Catching */}
+          {/* REFINED SMALL PLUS ICON: Perfectly compact and sharp */}
           <Link 
             href="/generate" 
-            className="group relative flex items-center justify-center w-10 h-10 bg-zinc-950 text-white rounded-full hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-zinc-200"
+            className="group relative flex items-center justify-center w-8 h-8 bg-zinc-950 text-white rounded-full hover:scale-110 active:scale-90 transition-all duration-200 shadow-md shadow-zinc-200"
             title="Create New Receipt"
           >
-            {/* Bold Plus icon for clarity */}
-            <Plus size={22} strokeWidth={3} />
+            {/* Reduced size to 16 and stroke to 3 for a small but bold look */}
+            <Plus size={16} strokeWidth={3} />
             
-            {/* Tooltip that appears on hover */}
-            <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-zinc-900 text-[10px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-tighter whitespace-nowrap z-50">
+            <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-zinc-900 text-[9px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-tighter whitespace-nowrap z-50">
               New Receipt
             </span>
           </Link>
@@ -97,7 +94,6 @@ export default function DashboardNavbar() {
                         <MobileLink href="/history" icon={<History size={16}/>} label="History" active={isActive('/history')} onClick={() => setIsMenuOpen(false)} />
                         <MobileLink href="/settings" icon={<Package size={16}/>} label="Price List" active={false} onClick={() => setIsMenuOpen(false)} />
                         <MobileLink href="/settings" icon={<Settings size={16}/>} label="Settings" active={isActive('/settings')} onClick={() => setIsMenuOpen(false)} />
-                        {/* Mobile Add Receipt Link */}
                         <MobileLink href="/generate" icon={<Plus size={16}/>} label="Create Receipt" active={false} onClick={() => setIsMenuOpen(false)} />
                      </div>
                      <div className="p-2">
@@ -116,6 +112,7 @@ export default function DashboardNavbar() {
   );
 }
 
+// ... NavLink and MobileLink helper functions remain the same
 function NavLink({ href, icon, label, active }: any) {
   return (
     <Link href={href} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${active ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>{icon} {label}</Link>
