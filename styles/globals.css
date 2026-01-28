@@ -11,7 +11,7 @@
   --accent: #E4E4E7;       /* Subtle Silver */
   
   /* Helper for overlays (just black) */
-  --overlay: 9 9 11;       
+  --overlay: 8 9 11;       
 }
 
 body {
